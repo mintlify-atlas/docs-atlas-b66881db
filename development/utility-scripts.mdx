@@ -1,7 +1,7 @@
 ---
-title: "XMage Developer Utility Scripts Reference"
+title: "XMage Utility Scripts: Developer Reference for Utils/"
 sidebarTitle: "Utility Scripts"
-description: "Reference for XMage's Perl and Python utility scripts in Utils/: card generation, set tracking, data import, and release tooling."
+description: "Reference for XMage's Perl and Python utility scripts in the Utils/ directory: card generation, set tracking, data import, and release tooling."
 ---
 
 The `Utils/` directory contains a collection of Perl and Python scripts that automate the most common tasks in XMage card development: generating Java class skeletons for new cards, tracking implementation progress across sets, importing card data from Scryfall, and packaging release builds. Most scripts read from shared data files (`mtg-cards-data.txt`, `mtg-sets-data.txt`, `keywords.txt`) that must be present in `Utils/` before use. Run all scripts from within the `Utils/` directory.
@@ -18,7 +18,7 @@ Before running any generation or tracking script, ensure these files exist in `U
 | `mtg-sets-data.txt` | Set metadata mapping three-letter set codes to their XMage class names. Required by every script that operates on a per-set basis. |
 
 <Note>
-  Keep `mtg-cards-data.txt` up to date by running `mtg-cards-data-scryfall.py` after each new Magic set is officially released on Scryfall. The script considers the file stale after 12 hours and will re-download automatically, but you can force a refresh at any time by deleting the cached copy before running.
+  Keep `mtg-cards-data.txt` up to date by running `mtg-cards-data-scryfall.py` after each new Magic set is officially released on Scryfall. The script caches per-set JSON files (e.g., `M21-scryfall.json`) and considers each cache stale after 24 hours, re-downloading automatically. To force a refresh, delete the relevant `{SETCODE}-scryfall.json` file before running.
 </Note>
 
 ---
@@ -186,9 +186,13 @@ perl gen_list_duplicate_collector_ids.pl
 
 ### `mtg-cards-data-scryfall.py`
 
-Downloads card data from the Scryfall bulk-data API and writes it to `mtg-cards-data.txt` in the pipe-delimited format that all `gen-*.pl` scripts expect. The script handles Scryfall's paginated API automatically and respects the `User-Agent` header requirement (`mage-scryfall-sync/1.0`). It also checks whether the existing file is stale (older than 12 hours) before re-downloading.
+Downloads card data from the Scryfall search API for one or more set codes and writes it to `mtg-cards-data.txt` in the pipe-delimited format that all `gen-*.pl` scripts expect. Pass set codes as command-line arguments, or run without arguments to be prompted. The script handles Scryfall's paginated API automatically and sets the `User-Agent` header to `mage-scryfall-sync/1.0`. It caches per-set JSON files locally and considers each cache stale after 24 hours before re-downloading.
 
 ```python
+# With set codes as arguments
+python3 mtg-cards-data-scryfall.py M21 AFR
+
+# Interactive mode (prompts for space-separated set codes)
 python3 mtg-cards-data-scryfall.py
 ```
 

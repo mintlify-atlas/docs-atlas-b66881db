@@ -29,8 +29,8 @@ Activated abilities have an explicit cost that the controller chooses to pay. Th
 For straightforward cases, use `SimpleActivatedAbility` from `mage.abilities.common`:
 
 ```java
-// SimpleActivatedAbility(Zone zone, Effect effect, Cost cost)
-// Zone.BATTLEFIELD means this ability is only active while the permanent is on the battlefield.
+// SimpleActivatedAbility(Effect effect, Cost cost)           — defaults to Zone.BATTLEFIELD
+// SimpleActivatedAbility(Zone zone, Effect effect, Cost cost) — explicit zone
 
 // {3}: Untap this permanent.
 this.addAbility(new SimpleActivatedAbility(

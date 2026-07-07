@@ -1,5 +1,5 @@
 ---
-title: "XMage Test Mode and Development Testing Tools"
+title: "XMage Test Mode, Cheat Commands, and Testing Tools"
 sidebarTitle: "Testing Tools"
 description: "Use XMage's test mode server, cheat commands, and fast-game buttons to quickly verify card interactions and game rule implementations."
 ---
@@ -7,7 +7,7 @@ description: "Use XMage's test mode server, cheat commands, and fast-game button
 XMage ships with a dedicated test mode for the server that strips away the safety guardrails used on public servers — no deck validation, no connection timeouts, simplified login — so you can spin up a game quickly, inject cards mid-match, and pause execution in your IDE debugger without being kicked. Alongside test mode there is a Swing admin console (`Mage.Server.Console`), a JUnit test framework (`Mage.Tests`), and a details logging mode, all designed to keep the feedback loop tight during development.
 
 <Warning>
-  Test mode disables deck validation, authentication, and connection security checks. **Never run a server with `-DtestMode=true` (or `-testMode=true`) on a network-accessible or public-facing host.** Use it only on a local development machine.
+  Test mode disables deck validation, authentication, and connection security checks. **Never run a server with `-Dxmage.testMode=true` (or `-testMode=true`) on a network-accessible or public-facing host.** Use it only on a local development machine.
 </Warning>
 
 ---
@@ -30,7 +30,7 @@ When test mode is active, the following behaviours change:
 | Debug main menu | Not shown | **Shown** in the client (requires `-debug` arg on the client app) |
 
 <Tip>
-  For full GUI and rendering debugging, launch the client with the `-debug` argument **in addition to** running the server in test mode. The debug main menu for GUI and rendering tests is only shown in the client when both conditions are met — test mode on the server **and** `-debug` on the client.
+  For full GUI and rendering debugging, launch the client with the `-debug` argument. The debug main menu for GUI and rendering tests is controlled client-side: it is shown when the client is started with `-debug`, or automatically when running from source (developer build). The server's test mode and the client's debug menu are independent — you can enable either without the other.
 </Tip>
 
 ### How Test Mode Is Activated

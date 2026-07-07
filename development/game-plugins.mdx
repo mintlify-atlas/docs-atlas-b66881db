@@ -1,7 +1,7 @@
 ---
 title: "XMage Plugin System: Game Types, Decks, and Tournaments"
 sidebarTitle: "Game Plugins"
-description: "Understand and extend XMage's plugin system for game types, player types, tournament formats, deck validators, and draft cubes."
+description: "Understand and extend XMage's plugin system for game types, player types, tournament formats, deck validators, and draft cube configurations."
 ---
 
 XMage's game engine is designed to be extended without modifying core server code. Almost every user-facing game variant — from Two Player Duel to Commander to Jumpstart — is delivered as a separate JAR plugin that the server discovers and loads at startup. This architecture makes it possible to add new game modes, formats, and tournament structures by dropping a new JAR into the `plugins/` directory and registering it in `config.xml`.

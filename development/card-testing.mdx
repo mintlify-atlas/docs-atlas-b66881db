@@ -81,7 +81,7 @@ Actions are also queued before `execute()`. The `turnNum` parameter refers to th
 | `block(int turnNum, TestPlayer player, String blocker, String attacker)` | Declare a blocker |
 | `setChoice(TestPlayer player, String choice)` | Supply a named choice (for modal spells, discard prompts, etc.) |
 | `addTarget(TestPlayer player, String targetName)` | Add an additional target for a queued action |
-| `waitStackResolved(int turnNum, PhaseStep step)` | Wait for the current stack to fully resolve before continuing |
+| `waitStackResolved(int turnNum, PhaseStep step, TestPlayer player)` | Wait for the current stack to fully resolve before continuing |
 
 ### Controlling Simulation Flow
 

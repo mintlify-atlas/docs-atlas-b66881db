@@ -1,10 +1,10 @@
 ---
-title: "XMage Game Formats and Supported Game Modes"
+title: "XMage Game Modes: Supported Formats and Deck Validators"
 sidebarTitle: "Game Modes"
-description: "XMage supports 15+ Magic: The Gathering formats including Commander, Standard, Modern, Draft, Sealed, Pauper, Oathbreaker, and Momir Basic."
+description: "XMage supports 17 game types and 52 deck validators including Commander, Standard, Modern, Draft, Sealed, Pauper, Oathbreaker, and Momir Basic."
 ---
 
-XMage ships with one of the broadest format catalogs of any Magic: The Gathering client, covering everything from kitchen-table Freeform to tournament-legal Standard and the full Commander family. All formats have full rules enforcement — the server validates deck legality before a game starts and enforces game rules throughout every match. Whether you want a two-player competitive duel, a 10-player Commander pod, or a nostalgic Old School 93/94 game, there is a game type and a matching deck validator waiting for you.
+XMage ships with one of the broadest format catalogs of any Magic: The Gathering client, covering everything from kitchen-table Freeform to tournament-legal Standard and the full Commander family. The server registers 17 distinct game types and 52 deck validators, all with full rules enforcement — deck legality is checked before a game starts and game rules are enforced throughout every match. Whether you want a two-player competitive duel, a 10-player Commander pod, or a nostalgic Old School 93/94 game, there is a game type and a matching deck validator waiting for you.
 
 ## Highlight Formats
 
@@ -68,86 +68,86 @@ Deck validators enforce legality — card pool, set legality, deck size, sideboa
 
 | Validator | Notes |
 |---|---|
-| **Standard** | Current rotating Standard card pool |
-| **Pioneer** | Sets from Return to Ravnica onward, with Pioneer ban list |
-| **Modern** | 8th Edition onward, with Modern ban list |
-| **Modern – No Banned List** | Modern card pool with the ban list removed |
-| **Legacy** | All sets, with Legacy ban list |
-| **Vintage** | All sets, restricted list enforced |
-| **Pauper** | Commons only, Pauper ban list |
-| **Historic** | Arena Historic card pool |
-| **Eternal** | Eternal format (all sets, no banned list) |
-| **Extended** | Classic Extended format |
-| **Frontier** | Sets from Magic 2015 (M15) onward |
-| **Historical Type 2** | Vintage Standard seasons for historical play |
-| **Super Type 2** | Super Standard variant |
-| **Premodern** | Sets from 4th Edition through Onslaught |
-| **Freeform** | 60-card minimum, any cards, 4-of limit |
-| **Freeform Unlimited** | No restrictions at all — any card, any quantity |
+| **Constructed - Standard** | Current rotating Standard card pool |
+| **Constructed - Pioneer** | Sets from Return to Ravnica onward, with Pioneer ban list |
+| **Constructed - Modern** | 8th Edition onward, with Modern ban list |
+| **Constructed - Modern - No Banned List** | Modern card pool with the ban list removed |
+| **Constructed - Legacy** | All sets, with Legacy ban list |
+| **Constructed - Vintage** | All sets, restricted list enforced |
+| **Constructed - Pauper** | Commons only, Pauper ban list |
+| **Constructed - Historic** | Arena Historic card pool |
+| **Constructed - Eternal** | Eternal format (all sets, no banned list) |
+| **Constructed - Extended** | Classic Extended format |
+| **Constructed - Frontier** | Sets from Magic 2015 (M15) onward |
+| **Constructed - Historical Type 2** | Vintage Standard seasons for historical play |
+| **Constructed - Super Type 2** | Super Standard variant |
+| **Constructed - Premodern** | Sets from 4th Edition through Onslaught |
+| **Constructed - Freeform** | 60-card minimum, any cards, 4-of limit |
+| **Constructed - Freeform Unlimited** | No restrictions at all — any card, any quantity |
 
 ### Block Constructed
 
 XMage includes validators for 15 classic Magic blocks:
 
-| Block |
+| Validator |
 |---|
-| Amonkhet Block |
-| Battle for Zendikar Block |
-| Innistrad Block |
-| Ixalan Block |
-| Kaladesh Block |
-| Kamigawa Block |
-| Khans of Tarkir Block |
-| Lorwyn Block |
-| Return to Ravnica Block |
-| Scars of Mirrodin Block |
-| Shadowmoor Block |
-| Shadows over Innistrad Block |
-| Shards of Alara Block |
-| Theros Block |
-| Zendikar Block |
+| Block Constructed - Amonkhet |
+| Block Constructed - Battle for Zendikar |
+| Block Constructed - Innistrad |
+| Block Constructed - Ixalan |
+| Block Constructed - Kaladesh |
+| Block Constructed - Kamigawa |
+| Block Constructed - Khans of Tarkir |
+| Block Constructed - Lorwyn |
+| Block Constructed - Return to Ravnica |
+| Block Constructed - Scars of Mirrodin |
+| Block Constructed - Shadowmoor |
+| Block Constructed - Shadows over Innistrad |
+| Block Constructed - Shards of Alara |
+| Block Constructed - Theros |
+| Block Constructed - Zendikar |
 
 ### Highlander Variants
 
 | Validator | Notes |
 |---|---|
-| **Australian Highlander** | 100-card singleton with the Australian Highlander points system |
-| **Canadian Highlander** | 100-card singleton with the Canadian Highlander points system |
-| **European Highlander** | 100-card singleton under European Highlander rules |
+| **Constructed - Australian Highlander** | 100-card singleton with the Australian Highlander points system |
+| **Constructed - Canadian Highlander** | 100-card singleton with the Canadian Highlander points system |
+| **Constructed - European Highlander** | 100-card singleton under European Highlander rules |
 
 ### Old School 93/94
 
 Old School Magic with five different rule-set variants:
 
-| Variant |
+| Validator |
 |---|
-| Old School 93/94 (default) |
-| Old School 93/94 – Italian Rules |
-| Old School 93/94 – Channel Fireball Rules |
-| Old School 93/94 – EudoGames Rules |
-| Old School 93/94 – EC Rules |
+| Constructed - Old School 93/94 |
+| Constructed - Old School 93/94 - Italian Rules |
+| Constructed - Old School 93/94 - Channel Fireball Rules |
+| Constructed - Old School 93/94 - EudoGames Rules |
+| Constructed - Old School 93/94 - EC Rules |
 
 ### Variant Magic
 
 | Validator | Notes |
 |---|---|
-| **Commander** | 100-card singleton, legendary commander, color identity |
-| **Duel Commander** | 1v1 Commander with its own separate ban list |
-| **MTGO 1v1 Commander** | Commander under MTGO 1v1 rules |
-| **Centurion Commander** | European 1v1 Commander variant |
-| **Tiny Leaders** | Singleton commander of CMC ≤ 3, deck max CMC ≤ 3 |
-| **Momir Basic** | Basic lands only; creatures generated randomly |
-| **Penny Dreadful Commander** | Commander with Penny Dreadful pricing restrictions |
-| **Freeform Commander** | Commander rules, no ban list |
-| **Freeform Unlimited Commander** | Commander rules, no singleton restriction, no ban list |
-| **Brawl** | Standard-legal 60-card commander variant |
-| **Oathbreaker** | 60-card singleton with planeswalker commander + signature spell |
+| **Variant Magic - Commander** | 100-card singleton, legendary commander, color identity |
+| **Variant Magic - Duel Commander** | 1v1 Commander with its own separate ban list |
+| **Variant Magic - MTGO 1v1 Commander** | Commander under MTGO 1v1 rules |
+| **Variant Magic - Centurion Commander** | European 1v1 Commander variant |
+| **Variant Magic - Tiny Leaders** | Singleton commander of CMC ≤ 3, deck max CMC ≤ 3 |
+| **Variant Magic - Momir Basic** | Basic lands only; creatures generated randomly |
+| **Variant Magic - Penny Dreadful Commander** | Commander with Penny Dreadful pricing restrictions |
+| **Variant Magic - Freeform Commander** | Commander rules, no ban list |
+| **Variant Magic - Freeform Unlimited Commander** | Commander rules, no singleton restriction, no ban list |
+| **Variant Magic - Brawl** | Standard-legal 60-card commander variant |
+| **Variant Magic - Oathbreaker** | 60-card singleton with planeswalker commander + signature spell |
 
 ### Custom Sets
 
 | Validator | Notes |
 |---|---|
-| **Block Constructed Custom – Star Wars** | Uses the fan-made XMage Star Wars custom card set |
+| **Block Constructed Custom - Star Wars** | Uses the fan-made XMage Star Wars custom card set |
 
 ### Limited
 
@@ -157,8 +157,8 @@ Old School Magic with five different rule-set variants:
 
 ## Choosing the Right Game Type and Validator
 
-When you create a new table you choose *both* a **game type** (defines the match structure) and a **deck type** (validates the deck you bring). They must be compatible — for example, use **Commander Two Player Duel** as the game type and **Variant Magic – Commander** as the deck type for a standard 1v1 Commander game.
+When you create a new table you choose *both* a **game type** (defines the match structure) and a **deck type** (validates the deck you bring). They must be compatible — for example, use **Commander Two Player Duel** as the game type and **Variant Magic - Commander** as the deck type for a standard 1v1 Commander game.
 
 <Note>
-  Custom sets like the Star Wars fan set are fully implemented in XMage. Select **Block Constructed Custom – Star Wars** as the deck type to play with those cards in a dedicated constructed environment.
+  Custom sets like the Star Wars fan set are fully implemented in XMage. Select **Block Constructed Custom - Star Wars** as the deck type to play with those cards in a dedicated constructed environment.
 </Note>
