@@ -1,0 +1,113 @@
+{
+  "projectType": "saas",
+  "projectName": "XMage",
+  "projectDescription": "XMage is an open-source Magic: The Gathering game engine that lets you play against human opponents or computer AI opponents with full rules enforcement for over 31,000 unique cards.",
+  "theme": "maple",
+  "primaryColor": "#d5a55c",
+  "lightColor": "#887448",
+  "darkColor": "#201b17",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Getting Started",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/requirements",
+              "installation/client-setup",
+              "installation/server-setup"
+            ]
+          },
+          {
+            "group": "Playing the Game",
+            "pages": [
+              "playing/connecting",
+              "playing/game-modes",
+              "playing/deck-editor",
+              "playing/tournaments"
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "troubleshooting/common-issues",
+              "troubleshooting/performance"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/environment-setup",
+              "development/project-structure",
+              "development/workflow"
+            ]
+          },
+          {
+            "group": "Implementing Cards",
+            "pages": [
+              "development/card-implementation",
+              "development/abilities-effects",
+              "development/card-testing"
+            ]
+          },
+          {
+            "group": "Server & Plugins",
+            "pages": [
+              "development/server-configuration",
+              "development/game-plugins",
+              "development/ai-players"
+            ]
+          },
+          {
+            "group": "Utilities & Tools",
+            "pages": [
+              "development/utility-scripts",
+              "development/testing-tools"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Full rules enforcement for 31,000+ unique Magic: The Gathering cards",
+    "Play against human opponents online or computer AI opponents",
+    "Support for diverse game formats: Commander, Vintage, Legacy, Modern, Pioneer, Standard, Pauper, Oathbreaker, Tiny Leaders, Momir, and more",
+    "Booster Draft and Sealed Deck tournament support (elimination and Swiss) with 2–16 players",
+    "Multiple AI opponent types: Monte Carlo Tree Search (MCTS), look-ahead (MA), and draft bots",
+    "Full-featured deck editor with support for many deck formats and external deck sources",
+    "Client-server architecture supporting public servers and self-hosted private servers",
+    "Cross-platform: Windows, Linux, macOS",
+    "Player rating system (Glicko)",
+    "Extensible plugin system for game types, player types, tournament types, and deck validators"
+  ],
+  "publicApiSurface": [
+    "MageServer interface — server-side RPC commands (auth, game, tournament, chat)",
+    "Session / SessionImpl — client-server remoting session",
+    "Card / CardImpl — base card abstraction used for all card implementations",
+    "Ability / AbilityImpl — ability interface hierarchy (activated, triggered, static, loyalty)",
+    "Effect interfaces — ContinuousEffect, OneShotEffect, ReplacementEffect, etc.",
+    "Game / GameImpl — game-state and rules-enforcement engine",
+    "GameImpl game modes — TwoPlayerDuel, CommanderDuel, FreeForAll, BrawlDuel, OathbreakerDuel, MomirDuel, etc.",
+    "Tournament / TournamentImpl — tournament lifecycle management",
+    "DeckValidator / DeckValidatorFactory — format legality checking (Standard, Modern, Legacy, Commander, etc.)",
+    "ExpansionSet / Sets — card set and card database registry",
+    "ComputerPlayer / ComputerPlayer6 / ComputerPlayerMCTS — AI player implementations",
+    "config.xml — server configuration (port, maxGameThreads, authenticationActivated, player/game/tournament plugin registration)",
+    "PluginClassLoader / ExtensionPackageLoader — runtime plugin loading",
+    "Utils scripts — gen-card.pl, mtg-cards-data-scryfall.py, version-bump.pl card-generation utilities"
+  ]
+}

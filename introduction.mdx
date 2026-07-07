@@ -1,0 +1,130 @@
+---
+title: "XMage: Open-Source Magic: The Gathering Engine"
+sidebarTitle: "Introduction"
+description: "XMage is a free, open-source MTG simulator with full rules enforcement for 31,000+ cards, AI opponents, multiplayer, and 15+ game formats."
+---
+
+XMage — short for *Magic, Another Game Engine* — is a free, open-source application that lets you play Magic: The Gathering against human opponents online or against computer AI. It enforces the full rules of the game automatically, supports dozens of formats, and runs entirely without a subscription or account requirement when connecting to public servers.
+
+## What Is XMage?
+
+XMage is a client-server Java application built around a faithful rules engine for Magic: The Gathering. The server hosts games, manages player sessions, and enforces game rules, while the client provides a graphical interface — built with Java Swing — through which players manage decks, join tables, and play cards. Both components are distributed together and can be launched from a single launcher JAR.
+
+The project is licensed under the **MIT License** and its source code is hosted on [GitHub](https://github.com/magefree/mage). The current release version is **1.4.60**.
+
+<Note>
+  XMage requires **Java 8 or later** to run. You can download a compatible JRE from [java.com](http://java.com/). The entire application — client, server, and launcher — targets the Java 8 runtime, so no newer JDK features are required unless you are building from source.
+</Note>
+
+## Card Coverage
+
+XMage includes full rules enforcement for an extensive card library drawn from official Magic: The Gathering releases:
+
+| Metric | Count |
+|--------|-------|
+| Unique cards implemented | 31,000+ |
+| Total reprints across editions | 91,000+ |
+| Card sets available | Hundreds, including all regular sets |
+
+The library also includes custom sets such as Star Wars. All regular sets have nearly all cards implemented with complete rules text.
+
+## Supported Formats & Game Modes
+
+XMage supports single matches and tournaments across a wide range of sanctioned and community formats:
+
+- **Two-player duel** and **multiplayer free-for-all** (up to 10 players)
+- **Commander** (up to 10 players), **Oathbreaker**, **Brawl**, **Tiny Leaders**, **Canadian Highlander**
+- **Standard**, **Modern**, **Pauper**, **Historic Standard**, **Super Standard**, **Freeform**
+- **Momir Basic**, **Penny Dreadful Commander**, **Freeform Unlimited Commander**
+- **Booster Draft** and **Sealed** tournaments (4–16 players, elimination or Swiss)
+- **Cube Draft** and **Cube Sealed**
+
+A [special test mode](https://github.com/magefree/mage/wiki/Development-Testing-Tools) is available on local servers for testing combos and game situations with pre-defined conditions.
+
+## Architecture Overview
+
+XMage follows a classic client-server architecture. The server and client can run on the same machine or across a network.
+
+```
+┌─────────────────────┐         ┌──────────────────────────┐
+│   Mage.Client        │◄──────►│   Mage.Server             │
+│  (Swing GUI)         │  TCP   │  (JBoss Remoting)         │
+│  Port: any           │ 17171  │  Port: 17171 (default)    │
+└─────────────────────┘         └──────────────────────────┘
+```
+
+The server binds to **port 17171** by default (with a secondary bind port of 17179). Configuration is loaded from `config/config.xml` in the working directory, and server Java options can be adjusted from the XMage Launcher under **Settings → Java → Server java options**.
+
+## Module Breakdown
+
+XMage is organized as a multi-module Maven project (`org.mage:mage-root`, version `1.4.60`). Each module has a focused responsibility:
+
+| Module | Artifact ID | Purpose |
+|--------|-------------|---------|
+| `Mage` | `mage` | Core game engine — rules, card objects, abilities, game state |
+| `Mage.Common` | `mage-common` | Shared data types and utilities used by client and server |
+| `Mage.Server` | `mage-server` | Game server, session management, JBoss Remoting transport |
+| `Mage.Client` | `mage-client` | Java Swing desktop client and deck editor |
+| `Mage.Sets` | `mage-sets` | All card set definitions and card implementations |
+| `Mage.Server.Plugins` | *(multiple)* | Game mode plugins (Commander, Brawl, Oathbreaker, etc.), AI players, tournament types |
+| `Mage.Plugins` | `mage-counter-plugin` | Client-side plugins such as counter tracking |
+| `Mage.Server.Console` | `mage-server-console` | CLI console for server administration |
+| `Mage.Tests` | `mage-tests` | Integration and rules-enforcement test suite |
+| `Mage.Verify` | `mage-verify` | Card data verification tooling |
+
+### Server Plugins
+
+The `Mage.Server.Plugins` directory contains individual Maven modules for every supported game type and AI strategy:
+
+- **Game modes**: `Mage.Game.TwoPlayerDuel`, `Mage.Game.CommanderDuel`, `Mage.Game.CommanderFreeForAll`, `Mage.Game.FreeForAll`, `Mage.Game.OathbreakerDuel`, `Mage.Game.BrawlDuel`, `Mage.Game.MomirDuel`, and more
+- **AI players**: `Mage.Player.AI`, `Mage.Player.AI.MA`, `Mage.Player.AIMCTS`, `Mage.Player.AI.DraftBot`
+- **Deck formats**: `Mage.Deck.Constructed`, `Mage.Deck.Limited`
+- **Tournaments**: `Mage.Tournament.BoosterDraft`, `Mage.Tournament.Sealed`, `Mage.Tournament.Constructed`
+
+## Supported Platforms
+
+XMage runs on all major desktop operating systems:
+
+- 🪟 **Windows** — full support; launcher available as a clickable JAR
+- 🐧 **Linux** — full support; OpenGL and XRender acceleration available via JVM flags
+- 🍎 **macOS** — full support, including Apple Silicon (M1/M2) with platform-specific workarounds
+
+## Community & Resources
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/magefree/mage/issues">
+    Report bugs, request features, or browse the FAQ label for common problems and solutions.
+  </Card>
+  <Card title="Reddit — r/XMage" icon="reddit" href="https://www.reddit.com/r/XMage/">
+    Community discussion, announcements, gameplay tips, and troubleshooting help.
+  </Card>
+  <Card title="Discord Server" icon="discord" href="https://discord.gg/Pqf42yn">
+    Real-time chat with the XMage community and developers.
+  </Card>
+  <Card title="Public Servers" icon="server" href="http://xmage.today/servers/">
+    Connect to community-run public servers and find opponents without hosting your own.
+  </Card>
+</CardGroup>
+
+Additional resources:
+
+- [Latest releases](https://github.com/magefree/mage/releases) — download the launcher and app files
+- [Latest news](https://jaydi85.github.io/xmage-web-news/news.html) — community news updates
+- [Project wiki](https://github.com/magefree/mage/wiki) — full developer and server-admin documentation
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Download the launcher, connect to a public server, and play your first game in under 10 minutes.
+  </Card>
+  <Card title="Installation & Requirements" icon="download" href="https://github.com/magefree/mage/wiki">
+    System requirements, JVM tuning flags, and platform-specific setup notes.
+  </Card>
+  <Card title="Game Modes" icon="dice" href="https://github.com/magefree/mage/wiki">
+    Explore all supported formats — from standard duels to 10-player Commander pods.
+  </Card>
+  <Card title="Development Setup" icon="code" href="https://github.com/magefree/mage/wiki/Setting-up-your-Development-Environment">
+    Clone the repo, configure IntelliJ or Eclipse, and start contributing cards or features.
+  </Card>
+</CardGroup>

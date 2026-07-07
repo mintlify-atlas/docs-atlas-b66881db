@@ -1,0 +1,121 @@
+---
+title: "Connect to an XMage Server and Start Playing"
+sidebarTitle: "Connecting"
+description: "Connect the XMage client to a public or private server, register an account, and navigate the main lobby to join or create a game."
+---
+
+XMage is a client–server application: the desktop client connects to a running XMage server over TCP, and all game logic is enforced there. You can join one of the community-run public servers listed at [xmage.today/servers](http://xmage.today/servers/), or point the client at a private server you host yourself. Once connected, the main lobby gives you access to active tables, chat rooms, and the tools you need to create or join a game.
+
+## Opening the Connection Dialog
+
+Launch the XMage client (via the XMage Launcher or directly via `mage-client.jar`). The connection dialog opens automatically on first run. You can reopen it at any time from the menu bar:
+
+- **File → Connect to Server** to open a new connection.
+- **File → Disconnect** to close the current session without exiting the client.
+
+The dialog contains two quick-connect panels:
+
+| Panel | Purpose |
+|---|---|
+| **Fast Connect** | One-click buttons for Main, Local, Beta, US, EU, and other preset servers |
+| **Manual entry** | Fields for a custom server hostname, port, username, and password |
+
+## Connection Dialog Fields
+
+| Field | Default | Notes |
+|---|---|---|
+| **Server** | `localhost` | Hostname or IP address of the XMage server |
+| **Port** | `17171` | The primary server socket port (set in `config.xml`). A secondary port `17179` is used for internal remoting traffic — both must be reachable. |
+| **Username** | _(blank)_ | 3–14 characters; only lowercase letters, digits, and underscores are allowed (`[a-z0-9_]`) |
+| **Password** | _(blank)_ | Required only when `authenticationActivated=true` on the server; 8–100 characters |
+| **User's Flag** | World | Country flag shown next to your name in the lobby |
+
+<Tip>
+  The client stores per-server credentials. Switch between servers freely — your username and password for each address are remembered separately. Tick **Auto Connect** in the dialog to skip it entirely on the next launch.
+</Tip>
+
+## Registration and Authentication
+
+Servers can run in two modes, controlled by the `authenticationActivated` flag in `config.xml`:
+
+<Tabs>
+  <Tab title="Authentication Enabled (authenticationActivated=true)">
+    You must create an account before connecting. Click **Register new user…** in the connect dialog to open the registration form. Supply a username, password (8–100 characters), and an email address. The email is used only for password resets — click **Forgot password…** in the connect dialog to trigger a reset token.
+  </Tab>
+  <Tab title="Guest Mode (authenticationActivated=false)">
+    No registration is required. Simply enter any valid username (3–14 chars, `[a-z0-9_]`) and leave the password blank. This is the default for self-hosted servers and many community servers.
+  </Tab>
+</Tabs>
+
+<Note>
+  Public servers may have authentication enabled or disabled independently. Check the server listing at [xmage.today/servers](http://xmage.today/servers/) for each server's current policy.
+</Note>
+
+## Finding a Public Server
+
+Several community-maintained public servers are listed at **[http://xmage.today/servers/](http://xmage.today/servers/)**. Each entry shows the hostname, port, current player count, and whether registration is required. The XMage client also ships with built-in quick-connect buttons for the most popular regions:
+
+- **Main** — the primary community server
+- **Beta** — runs pre-release or development builds with unreleased features
+- **US / EU** — regionally closer servers for lower latency
+- **Local** — `localhost:17171` for a server running on the same machine
+
+## Connecting Step by Step
+
+<Steps>
+  <Step title="Open the connect dialog">
+    Launch the XMage client. The connect dialog appears automatically, or open it via **File → Connect to Server**.
+  </Step>
+  <Step title="Enter server details">
+    Type the server hostname or IP in the **Server** field and confirm the port is `17171` (or whatever the server operator specifies). For public servers, use one of the **Fast Connect** buttons or paste the address from [xmage.today/servers](http://xmage.today/servers/).
+  </Step>
+  <Step title="Enter your credentials">
+    Type your username. If the server requires authentication, enter your password. If you do not have an account yet, click **Register new user…** and fill in the registration form, then return to the connect dialog.
+  </Step>
+  <Step title="Choose a flag (optional)">
+    Select a country flag from the **User's Flag** dropdown — it appears next to your name in the lobby and in game.
+  </Step>
+  <Step title="Click Connect to Server">
+    Click the **Connect to server** button (or press Enter from any field). The status bar shows the connection progress. A successful connection opens the main lobby window.
+  </Step>
+  <Step title="Explore the lobby">
+    The lobby lists active game tables, running tournaments, online players, and rooms. Use the **Games** tab to join or create a table, the **Tournaments** tab for ongoing tournaments, and the **Players** tab to see who is online.
+  </Step>
+</Steps>
+
+## Navigating the Lobby
+
+Once connected, the main lobby is your hub for everything in XMage:
+
+<CardGroup cols={2}>
+  <Card title="Games Tab" icon="chess-board">
+    Lists all open tables. Click any row to see the game's format, player count, and options, then click **Join** to take a seat.
+  </Card>
+  <Card title="Tournaments Tab" icon="trophy">
+    Shows active and pending tournaments. Click **Join** to enter as a participant before the tournament starts.
+  </Card>
+  <Card title="Players Tab" icon="users">
+    Displays all currently connected players, their ratings, and country flags.
+  </Card>
+  <Card title="Global Chat" icon="comments">
+    A lobby-wide chat room at the bottom of the screen. Each game room also has its own in-room chat.
+  </Card>
+</CardGroup>
+
+## Player Profile and Preferences
+
+Your profile and display settings live in **Preferences** (accessible from the main menu):
+
+- **Avatar** — choose from the built-in avatar set; it appears in game next to your life total.
+- **Country flag** — also configurable in Preferences after connecting.
+- **Card image sources** — configure where the client downloads card images (e.g., Scryfall).
+
+XMage uses a **Glicko rating system**. Your rating is displayed in the Players tab and updates after each rated game.
+
+## Proxy Support
+
+If your network requires a proxy, click **Proxy Settings…** in the connect dialog. XMage supports **SOCKS** and **HTTP** proxy types. Set the proxy hostname, port, and optional credentials; the setting is saved per client session.
+
+## Disconnecting
+
+To disconnect without closing the client, use **File → Disconnect**. Any game you are currently in will be paused or auto-conceded after the server's idle timeout (default: 300 seconds). Reconnecting to the same server within that window may allow you to resume.

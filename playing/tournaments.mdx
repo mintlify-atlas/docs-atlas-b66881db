@@ -1,0 +1,192 @@
+---
+title: "Run and Join XMage Tournaments"
+sidebarTitle: "Tournaments"
+description: "XMage supports Booster Draft, Sealed, Jumpstart, and Constructed tournaments with elimination or Swiss pairings for 2 to 16 players."
+---
+
+XMage tournaments bring structure to multiplayer competition, automating pairings, round advancement, and scoring so you can focus on playing. Unlike casual tables that start as soon as seats are filled, a tournament waits for all participants to register before generating the first-round pairings. All bracket logic — single-elimination knockout rounds or Swiss points-based pairings — is handled server-side with no manual bookkeeping required.
+
+<Note>
+  Tournaments support **2 to 16 players**. Booster Draft tournaments specifically require **4 to 16 players** to generate valid booster rotations. The server will not start a draft with fewer than 4 participants.
+</Note>
+
+## Tournaments vs. Casual Tables
+
+| Feature | Casual Table | Tournament |
+|---|---|---|
+| Starts when | All seats filled | Host clicks Start (after min. players join) |
+| Pairings | Manual (pick opponent) | Automatic (Elimination or Swiss) |
+| Round tracking | None | Server-managed rounds |
+| Sideboarding between rounds | No | Yes (timed sideboard phase) |
+| Draft / Sealed pool generation | No | Yes |
+| Player count | 2–10 (game type dependent) | 2–16 |
+
+## Supported Tournament Types
+
+All tournament types below are registered in the server's `config.xml` and are available from the **New Tournament** dialog.
+
+### Constructed
+
+| Tournament Type | Pairings Format |
+|---|---|
+| **Constructed Elimination** | Single-elimination brackets; one loss ends your tournament |
+| **Constructed Swiss** | Swiss-system rounds; all players play every round, ranked by points |
+
+### Booster Draft
+
+Players receive booster packs, draft cards in a rotating pick order, then build 40-card decks. A **draft bot** fills empty seats automatically.
+
+| Tournament Type | Pairings | Notes |
+|---|---|---|
+| **Booster Draft Elimination** | Elimination | Standard draft from a chosen set |
+| **Booster Draft Elimination (Cube)** | Elimination | Draft from a selected cube list |
+| **Booster Draft Elimination (Random)** | Elimination | Random set selection for each booster |
+| **Booster Draft Elimination (Reshuffled)** | Elimination | All drafted cards are reshuffled and re-dealt |
+| **Booster Draft Elimination (Rich Man)** | Elimination | Each player keeps the cards they *don't* pick (inverse draft) |
+| **Booster Draft Elimination (Rich Man Cube)** | Elimination | Rich Man variant using a cube |
+| **Booster Draft Swiss** | Swiss | Standard draft, Swiss pairings |
+| **Booster Draft Swiss (Cube)** | Swiss | Cube draft, Swiss pairings |
+| **Booster Draft Swiss (Random)** | Swiss | Random boosters, Swiss pairings |
+| **Booster Draft Swiss (Reshuffled)** | Swiss | Reshuffled draft, Swiss pairings |
+| **Booster Draft Swiss (Rich Man)** | Swiss | Rich Man draft, Swiss pairings |
+| **Booster Draft Swiss (Rich Man Cube)** | Swiss | Rich Man Cube draft, Swiss pairings |
+
+### Sealed
+
+Players receive a fixed set of boosters and have a timed period to build a 40-card deck from the pool.
+
+| Tournament Type | Pairings | Notes |
+|---|---|---|
+| **Sealed Elimination** | Elimination | Standard sealed from a chosen set |
+| **Sealed Elimination (Cube)** | Elimination | Sealed pool generated from a cube |
+| **Sealed Swiss** | Swiss | Standard sealed, Swiss pairings |
+| **Sealed Swiss (Cube)** | Swiss | Cube sealed, Swiss pairings |
+
+### Jumpstart
+
+Players select Jumpstart packets (themed 20-card half-decks) and combine two to form a 40-card deck.
+
+| Tournament Type | Pairings | Notes |
+|---|---|---|
+| **Jumpstart Elimination** | Elimination | Standard Jumpstart packet selection |
+| **Jumpstart Swiss** | Swiss | Standard Jumpstart, Swiss pairings |
+| **Jumpstart Elimination (Custom)** | Elimination | Use custom Jumpstart packets |
+
+## Available Draft Cubes
+
+When creating a Cube Draft or Cube Sealed tournament, you choose a cube from the registered list. XMage ships with the following cubes:
+
+### Official MTGO Cubes
+
+| Cube Name | Description |
+|---|---|
+| **MTGO Legacy Cube** | The current MTGO Legacy Cube list |
+| **MTGO Vintage Cube** | The current MTGO Vintage Cube list |
+| **MTGO Legendary Cube** | The MTGO Legendary Cube |
+| **MTGO Legendary Cube April 2016** | April 2016 snapshot of the Legendary Cube |
+| **MTGO Modern Cube 2017** | The 2017 MTGO Modern Cube |
+| **MTGO Khans Expanded Cube** | Khans of Tarkir expanded format cube |
+| **MTGO Cube March 2014** | March 2014 MTGO Cube snapshot |
+| **MTGA Cube 2020 April** | MTG Arena April 2020 Cube |
+
+### Community Cubes
+
+| Cube Name |
+|---|
+| SCG Con Cube 2018 December |
+| The Peasant's Toolbox |
+| www.MTGCube.com |
+| The Pauper Cube |
+| Ben's Cube |
+| Cube Tutor 360 Pauper |
+| Cube Tutor 720 |
+| Eric Klug's Pro Tour Cube |
+| Guillaume Matignon's Jenny's/Johnny's Cube |
+| Jim Davis's Cube |
+| Joseph Vasoli's Peasant Cube |
+| Sam Black's No Search Cube |
+| Timothee Simonot's Twisted Color Pie Cube |
+| Mono Blue Cube |
+
+### Custom Cube
+
+| Cube Name | Description |
+|---|---|
+| **Cube From Deck** | Load any `.dck` file as the cube pool. Design your own cube in the deck editor and use it directly in a tournament. |
+
+## Creating a Booster Draft Tournament
+
+<Steps>
+  <Step title="Open New Tournament">
+    In the main lobby, click the **New Tournament** button (or find it under the Games menu). The tournament creation dialog opens.
+  </Step>
+  <Step title="Choose a tournament type">
+    Under **Tournament Type**, select **Booster Draft Swiss** (for a relaxed session where everyone plays every round) or **Booster Draft Elimination** (for a knockout bracket).
+  </Step>
+  <Step title="Select the set or cube">
+    Pick the Magic set to draft from the **Set** dropdown, or choose a cube from the **Draft Cube** dropdown if you selected a Cube variant. For a standard draft, pick a recently released set.
+  </Step>
+  <Step title="Configure player count and options">
+    Set the **Number of Players** (4–16 for draft). Check **Allow Spectators** if you want others to watch. Set the number of **Booster Packs** per player (default: 3).
+  </Step>
+  <Step title="Set the deck type validator">
+    Choose **Limited** as the deck type so the server validates the 40-card minimum after the draft phase.
+  </Step>
+  <Step title="Confirm and wait for players">
+    Click **OK** to publish the tournament to the lobby. Other players see it in the **Tournaments** tab and can click **Join**. Draft bots fill any empty seats when the tournament starts.
+  </Step>
+  <Step title="Draft picks">
+    Once the host clicks **Start**, each player receives a booster pack. Pick one card, then pass the pack to the next player (left for packs 1 and 3, right for pack 2). Repeat until all packs are exhausted.
+  </Step>
+  <Step title="Build your deck">
+    The deck editor opens automatically with your drafted card pool. Build a minimum 40-card deck and click **Submit Deck** before the timer expires.
+  </Step>
+  <Step title="Play rounds">
+    The server generates pairings and opens game tables for each match. Play your games; results are reported automatically. After all matches in a round finish, the next round's pairings are generated.
+  </Step>
+</Steps>
+
+## Joining an Existing Tournament
+
+1. Open the **Tournaments** tab in the main lobby.
+2. Find the tournament you want to enter — the listing shows the type, format, current player count, and status.
+3. Click **Join** (only available while the tournament is in the **Waiting** state — before the host starts it).
+4. If a deck is required before the tournament begins (Constructed), the deck editor opens so you can submit one.
+
+## The Draft Flow in Detail
+
+```
+Host creates tournament
+        │
+        ▼
+Players join (lobby Tournaments tab)
+        │
+        ▼
+Host starts tournament → Boosters generated
+        │
+        ▼
+Round 1 draft: pick 1 from pack 1 → pass → pick 2 → ... → pack empty
+        │
+        ▼
+Pack 2 opened, direction reverses (pass the other way)
+        │
+        ▼
+Pack 3 opened, direction reverses again
+        │
+        ▼
+Draft complete → Deck editor opens → Build 40-card deck
+        │
+        ▼
+Pairings generated → Round 1 match tables open
+        │
+        ▼
+Rounds continue until bracket/Swiss complete
+```
+
+## Sideboarding Between Rounds
+
+After each match in a tournament (except the last game of a series), a **sideboard phase** timer starts. Both players may swap cards between their main deck and sideboard without changing the deck size. The timer is enforced server-side; when it expires, the next game begins with whatever configuration each player has submitted.
+
+## AI Opponents in Tournaments
+
+Draft bots (`Computer - draftbot`) can fill empty seats in any draft tournament. They make picks using a built-in heuristic but do not play the games themselves — if a human player has no opponent, they receive a bye. The server configuration allows up to 15 AI opponents in regular games (`maxAiOpponents=15`), while draft bots are unlimited.

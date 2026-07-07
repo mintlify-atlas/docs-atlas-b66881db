@@ -1,72 +1,102 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "XMage",
+  "theme": "maple",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#d5a55c",
+    "light": "#887448",
+    "dark": "#201b17"
   },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
+  "favicon": "https://media.brand.dev/3fd9aed8-5a29-4b49-b456-a97f904bcf95.png",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "https://media.brand.dev/36243456-c09b-4035-be4f-3f67c3521fa7.png",
+    "dark": "https://media.brand.dev/36243456-c09b-4035-be4f-3f67c3521fa7.png"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
     "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "type": "github",
+      "href": "https://github.com/magefree/mage"
     }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/magefree/mage"
     }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Getting Started",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/requirements",
+              "installation/client-setup",
+              "installation/server-setup"
+            ]
+          },
+          {
+            "group": "Playing the Game",
+            "pages": [
+              "playing/connecting",
+              "playing/game-modes",
+              "playing/deck-editor",
+              "playing/tournaments"
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "troubleshooting/common-issues",
+              "troubleshooting/performance"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/environment-setup",
+              "development/project-structure",
+              "development/workflow"
+            ]
+          },
+          {
+            "group": "Implementing Cards",
+            "pages": [
+              "development/card-implementation",
+              "development/abilities-effects",
+              "development/card-testing"
+            ]
+          },
+          {
+            "group": "Server & Plugins",
+            "pages": [
+              "development/server-configuration",
+              "development/game-plugins",
+              "development/ai-players"
+            ]
+          },
+          {
+            "group": "Utilities & Tools",
+            "pages": [
+              "development/utility-scripts",
+              "development/testing-tools"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

@@ -1,0 +1,243 @@
+---
+title: "Configure the XMage Server: Ports, Auth, and Limits"
+sidebarTitle: "Server Configuration"
+description: "Full reference for XMage's config.xml: server address, ports, thread limits, authentication, mail settings, and AI opponent quotas."
+---
+
+The XMage server reads all of its runtime settings from a single XML file at startup. Understanding each attribute lets you tune connection capacity, enforce player registration, integrate email, and control how many AI opponents the server will host simultaneously.
+
+## Config File Location
+
+By default the server looks for the config file at `config/config.xml` relative to its working directory (the folder that contains the server JAR). You can override this path with the JVM system property:
+
+```bash
+java -Dxmage.config.path=/etc/xmage/config.xml -jar mage-server.jar
+```
+
+The property name is `xmage.config.path`.
+
+## Complete `<server>` Element
+
+The entire configuration lives inside a single `<server>` element. The following block mirrors the default values that ship with the XMage repository:
+
+```xml
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="../Config.xsd">
+
+    <server serverAddress="0.0.0.0"
+            serverName="mage-server"
+            port="17171"
+            secondaryBindPort="17179"
+            backlogSize="200"
+            numAcceptThreads="2"
+            maxPoolSize="300"
+            leasePeriod="5000"
+            socketWriteTimeout="10000"
+            maxGameThreads="10"
+            maxSecondsIdle="300"
+            minUserNameLength="3"
+            maxUserNameLength="14"
+            invalidUserNamePattern="[^a-z0-9_]"
+            minPasswordLength="8"
+            maxPasswordLength="100"
+            maxAiOpponents="15"
+            saveGameActivated="false"
+            authenticationActivated="false"
+            googleAccount=""
+            mailgunApiKey=""
+            mailgunDomain=""
+            mailSmtpHost=""
+            mailSmtpPort=""
+            mailUser=""
+            mailPassword=""
+            mailFromAddress=""
+    />
+
+    <!-- plugin sections follow ... -->
+</config>
+```
+
+## Attribute Reference
+
+### Network
+
+<ParamField path="serverAddress" type="string" default="0.0.0.0">
+  IP address or domain name the server socket binds to. Use `0.0.0.0` to listen on all available network interfaces. For a public server, set this to the externally reachable IP or hostname (e.g. `xmage.mydomain.com`) so clients can identify the server correctly.
+</ParamField>
+
+<ParamField path="serverName" type="string" default="mage-server">
+  Human-readable display name shown to connecting clients in the server browser.
+</ParamField>
+
+<ParamField path="port" type="integer" default="17171">
+  TCP port for the primary server socket. Clients connect to this port first. Open this port in your firewall.
+</ParamField>
+
+<ParamField path="secondaryBindPort" type="integer" default="17179">
+  Port for the secondary (callback) socket used by the JBoss Remoting bisocket transport for server-to-client callbacks. Set to `-1` to let the OS pick an arbitrary available port automatically.
+</ParamField>
+
+### Threading and Connection Queuing
+
+<ParamField path="backlogSize" type="integer" default="200">
+  Maximum number of pending (not yet accepted) incoming connections held in the OS queue. When this queue fills up, new connection attempts are rejected. Corresponds to the JBoss Remoting `backlogSize` connector attribute; JBoss default is `200`.
+</ParamField>
+
+<ParamField path="numAcceptThreads" type="integer" default="2">
+  Number of threads listening on the server socket for new connections. JBoss default is `1`; XMage ships with `2`.
+</ParamField>
+
+<ParamField path="maxPoolSize" type="integer" default="300">
+  Maximum number of server worker threads that can exist at any one time. Each active client request occupies a worker thread. JBoss default is `300`.
+</ParamField>
+
+<Note>
+  **Sizing `maxPoolSize`**: Idle worker threads are reclaimed after a 5-minute timeout, but if all worker threads are busy, new clients freeze in the connection dialog until one becomes free or `backlogSize` overflows. A good rule of thumb is **`maxPoolSize` ≥ expected simultaneous active connections × 20**.
+</Note>
+
+<ParamField path="leasePeriod" type="integer" default="5000">
+  Client heartbeat lease period in milliseconds. Setting this to a value greater than `0` enables server-side detection of dead clients. The server will consider a client dead if it hasn't sent a heartbeat within this window.
+</ParamField>
+
+<ParamField path="socketWriteTimeout" type="integer" default="10000">
+  Timeout in milliseconds for socket write operations. Any write that doesn't complete within this period causes the connection to be dropped.
+</ParamField>
+
+### Game Limits
+
+<ParamField path="maxGameThreads" type="integer" default="10">
+  Maximum number of games that can run simultaneously on this server. Attempts to start additional games beyond this limit will be queued or rejected.
+</ParamField>
+
+<ParamField path="maxSecondsIdle" type="integer" default="300">
+  Number of seconds a player may be idle before the server automatically concedes the game on their behalf. Set higher for casual servers with slower players.
+</ParamField>
+
+<ParamField path="maxAiOpponents" type="integer" default="15">
+  Maximum number of active workable AI opponents (`Computer - mad` and `Computer - monte carlo`) the server will permit simultaneously. Draft bots (`Computer - draftbot`) are excluded from this count and are always unlimited.
+</ParamField>
+
+<ParamField path="saveGameActivated" type="boolean" default="false">
+  When `true`, enables the game save and replay system. This feature is noted as not fully working in the current codebase; leave `false` unless you are developing the save/replay subsystem.
+</ParamField>
+
+### Username and Password Constraints
+
+<ParamField path="minUserNameLength" type="integer" default="3">
+  Minimum number of characters allowed in a player's username.
+</ParamField>
+
+<ParamField path="maxUserNameLength" type="integer" default="14">
+  Maximum number of characters allowed in a player's username.
+</ParamField>
+
+<ParamField path="invalidUserNamePattern" type="string" default="[^a-z0-9_]">
+  A Java regular expression. Any character matching this pattern is considered invalid in a username. The default rejects everything except lowercase letters, digits, and underscores.
+</ParamField>
+
+<ParamField path="minPasswordLength" type="integer" default="8">
+  Minimum password length enforced at registration (only relevant when `authenticationActivated="true"`).
+</ParamField>
+
+<ParamField path="maxPasswordLength" type="integer" default="100">
+  Maximum password length enforced at registration.
+</ParamField>
+
+### Authentication
+
+<ParamField path="authenticationActivated" type="boolean" default="false">
+  When `true`, players must register an account and log in before they can join the server. When `false`, anyone can connect with any username without a password.
+</ParamField>
+
+### Mail Settings
+
+These attributes are only consulted when `authenticationActivated="true"`. They control how the server sends account-verification and password-reset emails.
+
+<ParamField path="googleAccount" type="string" default="">
+  Google account integration — **not currently supported**. Leave empty.
+</ParamField>
+
+<ParamField path="mailgunApiKey" type="string" default="">
+  API key from your Mailgun account (e.g. `key-12121111...`). Used when `mailUser` is empty — in that case XMage uses the Mailgun HTTP API instead of a native SMTP server.
+</ParamField>
+
+<ParamField path="mailgunDomain" type="string" default="">
+  Mailgun sending domain associated with the API key above.
+</ParamField>
+
+<ParamField path="mailSmtpHost" type="string" default="">
+  Hostname of the SMTP server used when `mailUser` is set (native SMTP path).
+</ParamField>
+
+<ParamField path="mailSmtpPort" type="string" default="">
+  Port of the SMTP server (e.g. `587` for STARTTLS, `465` for SMTPS).
+</ParamField>
+
+<ParamField path="mailUser" type="string" default="">
+  Username for SMTP authentication. When non-empty, XMage uses native SMTP; when empty, XMage falls back to Mailgun.
+</ParamField>
+
+<ParamField path="mailPassword" type="string" default="">
+  Password for the SMTP account specified in `mailUser`.
+</ParamField>
+
+<ParamField path="mailFromAddress" type="string" default="">
+  The `From:` address on all outgoing mail (e.g. `noreply@xmage.mydomain.com`).
+</ParamField>
+
+## Enabling Authentication
+
+To require players to register before connecting, set `authenticationActivated="true"` and configure at least one mail delivery path so that the server can send verification emails.
+
+**Using SMTP (recommended for self-hosted mail):**
+
+```xml
+<server ...
+        authenticationActivated="true"
+        mailSmtpHost="smtp.mydomain.com"
+        mailSmtpPort="587"
+        mailUser="xmage@mydomain.com"
+        mailPassword="s3cr3t"
+        mailFromAddress="noreply@mydomain.com"
+/>
+```
+
+**Using Mailgun (recommended for cloud deployments):**
+
+```xml
+<server ...
+        authenticationActivated="true"
+        mailgunApiKey="key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        mailgunDomain="mg.mydomain.com"
+        mailFromAddress="noreply@mg.mydomain.com"
+/>
+```
+
+<Warning>
+  With `authenticationActivated="true"` the server will validate email addresses against the XMage user database on startup. Make sure your database migration succeeds (`AuthorizedUserRepository.checkAlterAndMigrateAuthorizedUser()`) or the server will refuse to start.
+</Warning>
+
+## JVM Launch Flags
+
+Several runtime behaviours are controlled by JVM system properties (`-Dkey=value`) rather than `config.xml`. These are parsed in `Main.java` before the config file is read and have the highest precedence.
+
+| Property | Argument equivalent | Purpose |
+|---|---|---|
+| `-Dxmage.testMode=true` | `-testMode=true` | Enable test/cheat mode: fast game buttons, no deck validation, simplified login, debugger-safe ping disabling |
+| `-Dxmage.detailsMode=true` | `-detailsMode=true` | Emit additional server-side detail logs |
+| `-Dxmage.adminPassword=<pw>` | `-adminPassword=<pw>` | Set the admin console password at launch time |
+| `-Dxmage.config.path=<path>` | *(property only)* | Override the default `config/config.xml` path |
+
+Example launch command with all flags:
+
+```bash
+java \
+  -Dxmage.testMode=false \
+  -Dxmage.adminPassword=changeme \
+  -Dxmage.config.path=/opt/xmage/config/config.xml \
+  -jar mage-server-<version>.jar
+```
+
+<Note>
+  In a developer build (where `MageVersion.isDeveloperBuild()` returns `true`), test mode is **enabled by default** even without the flag. Always set `-Dxmage.testMode=false` explicitly in production deployments built from source.
+</Note>

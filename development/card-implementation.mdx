@@ -1,0 +1,349 @@
+---
+title: "Implement Magic: The Gathering Cards in XMage"
+sidebarTitle: "Card Implementation"
+description: "Add new cards to XMage by extending CardImpl, declaring card attributes, and registering abilities — with a complete step-by-step example."
+---
+
+Every Magic: The Gathering card in XMage is a self-contained Java class that extends `CardImpl` and lives inside the `Mage.Sets` module. The class declares the card's types, mana cost, power/toughness, subtypes, and abilities in its constructor, then exposes a `copy()` method so the game engine can safely clone the card for each player who owns it. Before writing any code by hand, XMage ships a Perl code-generation utility that builds a skeleton from the official card database, saving you from repetitive boilerplate.
+
+## Directory and Naming Conventions
+
+All card classes live under `Mage.Sets/src/mage/cards/`. Cards are grouped into a subdirectory named after the **lowercase first letter** of the card's name:
+
+```
+Mage.Sets/src/mage/cards/
+  l/
+    LightningBolt.java
+  a/
+    AangAirNomad.java
+  g/
+    GoblinGuide.java
+```
+
+The Java class name is derived from the card name by converting it to CamelCase and removing all spaces, hyphens, commas, apostrophes, and other special characters. For example, "Aang, Air Nomad" becomes `AangAirNomad` and lives in `mage/cards/a/AangAirNomad.java`.
+
+Classes are declared `public final` — no further subclassing is expected — and the package matches the directory:
+
+```java
+package mage.cards.l;
+```
+
+## Generating a Skeleton with `gen-card.pl`
+
+The `Utils/` directory contains `gen-card.pl`, a Perl script that reads the bundled card database (`mtg-cards-data.txt`) and renders a ready-to-compile skeleton via a Text::Template template (`cardClass.tmpl`). Run it from the `Utils/` directory:
+
+```bash
+cd Utils
+perl gen-card.pl
+# Enter a card name: Lightning Bolt
+```
+
+You can also pass the card name directly as a command-line argument:
+
+```bash
+perl gen-card.pl "Goblin Guide"
+```
+
+The script looks up the card's type, mana cost, power/toughness, subtypes, and any keyword abilities it recognises, then writes the `.java` file into the correct `Mage.Sets` subdirectory. It also generates a matching test skeleton via `gen-card-test.pl` if you need a starting point for your JUnit tests.
+
+<Note>
+`gen-card.pl` requires `mtg-cards-data.txt` and `mtg-sets-data.txt` in the same `Utils/` directory. These files are bundled in the repository. If the card name is not found, the script will suggest close matches.
+</Note>
+
+## Anatomy of a Card Class
+
+Every card class follows the same four-part structure:
+
+1. **Public constructor** `(UUID ownerId, CardSetInfo setInfo)` — declares everything about the card.
+2. **Private copy constructor** `(final YourCard card)` — delegates to `super(card)`.
+3. **`copy()` override** — returns `new YourCard(this)`.
+4. **Inner classes** (optional) — custom ability or effect classes defined in the same file when no reusable common class exists.
+
+### Constructor Parameters
+
+The first call inside the constructor must be `super(...)` with four arguments:
+
+| Argument | Type | Description |
+|---|---|---|
+| `ownerId` | `UUID` | The player who owns this card instance (passed through) |
+| `setInfo` | `CardSetInfo` | Set code, card number, rarity, and art info |
+| `cardTypes` | `CardType[]` | One or more from `CardType.CREATURE`, `INSTANT`, `SORCERY`, `ARTIFACT`, `ENCHANTMENT`, `LAND`, `PLANESWALKER`, `KINDRED`, `BATTLE` |
+| `costs` | `String` | Mana cost string, e.g. `"{1}{W}{W}"`, `"{R}"`, `"{0}"` |
+
+### Declaring Card Attributes
+
+After the `super()` call, set card-specific attributes directly on instance fields:
+
+```java
+// Supertypes (Legendary, Snow, Basic, World)
+this.supertype.add(SuperType.LEGENDARY);
+
+// Subtypes
+this.subtype.add(SubType.HUMAN);
+this.subtype.add(SubType.AVATAR);
+
+// Power and toughness (creatures only)
+this.power = new MageInt(5);
+this.toughness = new MageInt(4);
+
+// Starting loyalty (planeswalkers only)
+this.setStartingLoyalty(4);
+
+// Starting defense (battles only)
+this.setStartingDefense(3);
+```
+
+### Adding Abilities
+
+Call `this.addAbility(...)` once per ability. XMage provides hundreds of pre-built ability classes in `mage.abilities.common` and keyword abilities in `mage.abilities.keyword`. Always check these packages before writing a new ability from scratch:
+
+```java
+// Singleton keyword abilities
+this.addAbility(FlyingAbility.getInstance());
+this.addAbility(VigilanceAbility.getInstance());
+this.addAbility(HasteAbility.getInstance());
+
+// Parameterised abilities
+this.addAbility(new SimpleStaticAbility(new GainAbilityControlledEffect(
+        VigilanceAbility.getInstance(),
+        Duration.WhileOnBattlefield,
+        StaticFilters.FILTER_PERMANENT_CREATURES,
+        true   // excludes the source itself
+)));
+```
+
+For spells (instants and sorceries), effects and targets are wired through the card's built-in `SpellAbility` rather than a new ability instance:
+
+```java
+// Instant/sorcery: add target and effect to the pre-existing SpellAbility
+this.getSpellAbility().addTarget(new TargetAnyTarget());
+this.getSpellAbility().addEffect(new DamageTargetEffect(3));
+```
+
+## Complete Examples
+
+<CodeGroup>
+
+```java LightningBolt.java (Instant)
+package mage.cards.l;
+
+import java.util.UUID;
+import mage.abilities.effects.common.DamageTargetEffect;
+import mage.cards.CardImpl;
+import mage.cards.CardSetInfo;
+import mage.constants.CardType;
+import mage.target.common.TargetAnyTarget;
+
+/**
+ * @author BetaSteward_at_googlemail.com
+ */
+public final class LightningBolt extends CardImpl {
+
+    public LightningBolt(UUID ownerId, CardSetInfo setInfo) {
+        super(ownerId, setInfo, new CardType[]{CardType.INSTANT}, "{R}");
+
+        // Lightning Bolt deals 3 damage to any target.
+        this.getSpellAbility().addTarget(new TargetAnyTarget());
+        this.getSpellAbility().addEffect(new DamageTargetEffect(3));
+    }
+
+    private LightningBolt(final LightningBolt card) {
+        super(card);
+    }
+
+    @Override
+    public LightningBolt copy() {
+        return new LightningBolt(this);
+    }
+}
+```
+
+```java AangAirNomad.java (Legendary Creature)
+package mage.cards.a;
+
+import java.util.UUID;
+import mage.MageInt;
+import mage.abilities.common.SimpleStaticAbility;
+import mage.abilities.effects.common.continuous.GainAbilityControlledEffect;
+import mage.abilities.keyword.FlyingAbility;
+import mage.abilities.keyword.VigilanceAbility;
+import mage.cards.CardImpl;
+import mage.cards.CardSetInfo;
+import mage.constants.CardType;
+import mage.constants.Duration;
+import mage.constants.SubType;
+import mage.constants.SuperType;
+import mage.filter.StaticFilters;
+
+/**
+ * @author TheElk801
+ */
+public final class AangAirNomad extends CardImpl {
+
+    public AangAirNomad(UUID ownerId, CardSetInfo setInfo) {
+        super(ownerId, setInfo, new CardType[]{CardType.CREATURE}, "{3}{W}{W}");
+
+        this.supertype.add(SuperType.LEGENDARY);
+        this.subtype.add(SubType.HUMAN);
+        this.subtype.add(SubType.AVATAR);
+        this.subtype.add(SubType.ALLY);
+        this.power = new MageInt(5);
+        this.toughness = new MageInt(4);
+
+        // Flying
+        this.addAbility(FlyingAbility.getInstance());
+
+        // Vigilance
+        this.addAbility(VigilanceAbility.getInstance());
+
+        // Other creatures you control have vigilance.
+        this.addAbility(new SimpleStaticAbility(new GainAbilityControlledEffect(
+                VigilanceAbility.getInstance(),
+                Duration.WhileOnBattlefield,
+                StaticFilters.FILTER_PERMANENT_CREATURES,
+                true
+        )));
+    }
+
+    private AangAirNomad(final AangAirNomad card) {
+        super(card);
+    }
+
+    @Override
+    public AangAirNomad copy() {
+        return new AangAirNomad(this);
+    }
+}
+```
+
+```java BasaltMonolith.java (Artifact with activated abilities)
+package mage.cards.b;
+
+import java.util.UUID;
+import mage.Mana;
+import mage.abilities.common.SimpleActivatedAbility;
+import mage.abilities.common.SimpleStaticAbility;
+import mage.abilities.costs.common.TapSourceCost;
+import mage.abilities.costs.mana.GenericManaCost;
+import mage.abilities.effects.common.DontUntapInControllersUntapStepSourceEffect;
+import mage.abilities.effects.common.UntapSourceEffect;
+import mage.abilities.mana.SimpleManaAbility;
+import mage.cards.CardImpl;
+import mage.cards.CardSetInfo;
+import mage.constants.CardType;
+import mage.constants.Zone;
+
+/**
+ * @author LevelX2
+ */
+public final class BasaltMonolith extends CardImpl {
+
+    public BasaltMonolith(UUID ownerId, CardSetInfo setInfo) {
+        super(ownerId, setInfo, new CardType[]{CardType.ARTIFACT}, "{3}");
+
+        // Basalt Monolith doesn't untap during your untap step.
+        this.addAbility(new SimpleStaticAbility(
+                new DontUntapInControllersUntapStepSourceEffect()));
+
+        // {T}: Add {C}{C}{C}.
+        this.addAbility(new SimpleManaAbility(
+                Zone.BATTLEFIELD, Mana.ColorlessMana(3), new TapSourceCost()));
+
+        // {3}: Untap Basalt Monolith.
+        this.addAbility(new SimpleActivatedAbility(
+                new UntapSourceEffect(), new GenericManaCost(3)));
+    }
+
+    private BasaltMonolith(final BasaltMonolith card) {
+        super(card);
+    }
+
+    @Override
+    public BasaltMonolith copy() {
+        return new BasaltMonolith(this);
+    }
+}
+```
+
+</CodeGroup>
+
+## Registering the Card in a Set
+
+A card class that is not registered in a set file will never appear in the game. Each set has a corresponding class in `Mage.Sets/src/mage/sets/` that extends `ExpansionSet` and registers cards via `cards.add(new SetCardInfo(...))`:
+
+```java
+// Inside, e.g., AdventuresInTheForgottenRealms.java
+cards.add(new SetCardInfo(
+    "Adult Gold Dragon",   // card name as it appears in-game
+    216,                   // collector number
+    Rarity.RARE,
+    mage.cards.a.AdultGoldDragon.class   // your card class
+));
+```
+
+If the same card appears in multiple sets, add a `SetCardInfo` entry to each relevant set file. The `NON_FULL_USE_VARIOUS` constant is used when a single class is shared across multiple printings with different art.
+
+<Warning>
+Forgetting to register a card in a set is the most common reason a newly implemented card cannot be found in the deck editor or card search. Always add the `SetCardInfo` entry before testing.
+</Warning>
+
+## Full Implementation Flow
+
+<Steps>
+
+### Generate the skeleton
+
+Run `gen-card.pl` from the `Utils/` directory to produce the boilerplate class:
+
+```bash
+cd Utils
+perl gen-card.pl "Card Name"
+```
+
+The generated file is placed in the correct `Mage.Sets/src/mage/cards/<letter>/` subdirectory automatically.
+
+### Fill in card attributes
+
+Open the generated file and verify the `super()` call has the right `CardType` array and mana cost string. Add `supertype`, `subtype`, `power`, and `toughness` assignments as needed.
+
+### Wire up abilities
+
+Search `mage.abilities.common` and `mage.abilities.keyword` for an existing class that matches the card text. Call `this.addAbility(...)` for each ability. For spells, use `this.getSpellAbility().addEffect(...)` and `this.getSpellAbility().addTarget(...)`.
+
+### Implement custom abilities (if needed)
+
+If no matching ability exists in `mage.abilities.common`, write inner classes extending `TriggeredAbilityImpl`, `ActivatedAbilityImpl`, or `StaticAbility`, and custom effects extending `OneShotEffect` or `ContinuousEffectImpl`. See the [Abilities & Effects reference](/development/abilities-effects) for details.
+
+### Register the card in its set file
+
+Open the matching class in `Mage.Sets/src/mage/sets/` and add a `SetCardInfo` entry with the card's name, collector number, rarity, and class reference.
+
+### Compile and run tests
+
+Build and run the test suite to verify there are no compilation errors and the card behaves correctly:
+
+```bash
+mvn test -pl Mage.Tests
+```
+
+</Steps>
+
+## The `copy()` Method
+
+Every card class **must** implement `copy()`. The game engine copies cards constantly — when they are put into play, when effects duplicate them, and when game state is cloned for AI simulation. The copy constructor pattern delegates all field copying to `super(card)`:
+
+```java
+private YourCard(final YourCard card) {
+    super(card);
+    // copy any additional fields declared in this class
+}
+
+@Override
+public YourCard copy() {
+    return new YourCard(this);
+}
+```
+
+<Warning>
+Omitting `copy()` or returning `null` from it will cause `NullPointerException` crashes deep inside the game engine. The compiler will not warn you — this is enforced by convention, not the type system.
+</Warning>

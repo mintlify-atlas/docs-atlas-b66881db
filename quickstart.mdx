@@ -1,47 +1,169 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with XMage in Minutes"
+sidebarTitle: "Quickstart"
+description: "Download the XMage launcher, install Java 8+, and connect to a public server to play your first Magic: The Gathering game in under 10 minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+XMage is free to download and play — no account required to join public games. This guide walks you through installing the launcher, connecting to a public server, building a deck, and sitting down at your first table. The whole process takes less than ten minutes on a typical internet connection.
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, make sure you have **Java 8 or later** installed on your system. XMage's launcher and both the client and server components are compiled to target the Java 8 runtime.
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+<Note>
+  Download a compatible Java Runtime Environment from [java.com](http://java.com/). OpenJDK distributions from [Adoptium](https://adoptium.net/) also work. Verify your installation by running `java -version` in a terminal.
+</Note>
 
-## Get started
+```bash
+# Verify Java is installed and at version 8 (1.8) or later
+java -version
+# Expected output example:
+# java version "1.8.0_361"
+```
+
+---
+
+## Installation & Launch
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+  <Step title="Download XMage">
+    Go to [xmage.today](http://xmage.today/) and download the latest XMage launcher and app files. The download is a ZIP archive containing the launcher JAR, the client JAR, configuration files, and supporting libraries.
 
-    ```bash
-    your-cli init
-    ```
+    <Warning>
+      The **client and server versions must match**. If you connect to a public server running a different version than your client, you will be refused or experience errors. Always download the latest release from [xmage.today](http://xmage.today/) to stay in sync with public servers, and check [xmage.today/servers/](http://xmage.today/servers/) for the version each server is running.
+    </Warning>
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
-    ```
+  <Step title="Unpack the Archive">
+    Extract the downloaded ZIP to a permanent folder on your machine. Avoid paths with spaces or special characters. Suggested locations:
+
+    <Tabs>
+      <Tab title="Windows">
+        ```
+        D:\games\xmage\
+        ```
+        Right-click the ZIP in Explorer and choose **Extract All…**, then browse to `D:\games\` as the destination. You should end up with a folder like:
+        ```
+        D:\games\xmage\
+          XMageLauncher-0.4.xx.jar
+          mage-client\
+          mage-server\
+          config\
+        ```
+      </Tab>
+      <Tab title="Linux">
+        ```bash
+        mkdir -p ~/games/xmage
+        unzip XMage*.zip -d ~/games/xmage
+        ls ~/games/xmage
+        ```
+      </Tab>
+      <Tab title="macOS">
+        ```bash
+        mkdir -p ~/games/xmage
+        unzip ~/Downloads/XMage*.zip -d ~/games/xmage
+        ls ~/games/xmage
+        ```
+        If your browser automatically expanded the ZIP, just move the resulting folder to `~/games/xmage`.
+      </Tab>
+    </Tabs>
   </Step>
+
+  <Step title="Launch XMage">
+    Start the XMage Launcher by running the launcher JAR. The launcher manages updates and lets you start the client and/or a local server.
+
+    <Tabs>
+      <Tab title="Windows">
+        Double-click `XMageLauncher-*.jar` in File Explorer.
+
+        If the file opens as a ZIP instead of running, right-click it and choose **Open with → Java Platform SE Binary**, or run it from the command line:
+        ```bat
+        cd D:\games\xmage
+        java -jar XMageLauncher-0.4.jar
+        ```
+      </Tab>
+      <Tab title="Linux">
+        ```bash
+        cd ~/games/xmage
+        java -jar XMageLauncher-0.4.jar
+        ```
+        For better rendering performance on Linux, consider passing OpenGL or XRender flags:
+        ```bash
+        java -Dsun.java2d.opengl=true -jar XMageLauncher-0.4.jar
+        ```
+      </Tab>
+      <Tab title="macOS">
+        ```bash
+        cd ~/games/xmage
+        java -jar XMageLauncher-0.4.jar
+        ```
+        On macOS you may need to allow the JAR through Gatekeeper. If the launcher won't open, run:
+        ```bash
+        xattr -d com.apple.quarantine XMageLauncher-0.4.jar
+        ```
+        For Apple Silicon (M1/M2) machines, see the [known issues thread](https://github.com/magefree/mage/issues/8406#issuecomment-1011720728) for additional flags.
+      </Tab>
+    </Tabs>
+
+    Once the launcher window opens, click **Launch Client** to start the XMage graphical client.
+  </Step>
+
+  <Step title="Connect to a Public Server">
+    When the XMage client starts you will see a connection dialog. Community-maintained public servers are listed at [xmage.today/servers/](http://xmage.today/servers/). Pick a server whose version matches your client.
+
+    Fill in the connection dialog:
+
+    | Field | Value |
+    |-------|-------|
+    | **Server** | Hostname from xmage.today/servers/ (e.g. `xmage.de`) |
+    | **Port** | `17171` (default for all public servers) |
+    | **Username** | Any name between 3–14 characters (`[a-z0-9_]`) |
+    | **Password** | Leave blank or register on servers with authentication enabled |
+
+    Click **Connect**. A successful connection places you in the main lobby where you can see open tables and chat with other players.
+
+    <Tip>
+      If you want to play without an internet connection — for example to test a combo or learn the interface — you can start a **local server** from the launcher instead. The local server supports a special [test mode](https://github.com/magefree/mage/wiki/Development-Testing-Tools) that lets you set up arbitrary board states, skip to specific turns, and run automated scenarios. Click **Launch Server** in the XMage Launcher, then connect the client to `localhost` on port `17171`.
+    </Tip>
+  </Step>
+
+  <Step title="Load or Build a Deck">
+    Before you can join a table you need a deck. In the client, open **Deck Editor** from the top menu.
+
+    - **Build a new deck**: Search for cards by name, type, set, or text. Drag cards into your main deck and sideboard panels. XMage validates deck legality for the selected format as you build.
+    - **Import an existing deck**: Click **File → Load deck** and select a `.dck` file. XMage's deck format is plain text and compatible with many external deck builders.
+    - **Download card images**: On your first run, card images will be missing. Go to **Preferences → Images** in the client and choose an image source to begin downloading artwork in the background.
+
+    Save your deck with **File → Save deck** before proceeding.
+  </Step>
+
+  <Step title="Create or Join a Table">
+    Return to the main lobby. You have two options:
+
+    **Join an existing table**
+    - Browse the tables list in the lobby.
+    - Double-click an open table (shown in green) that matches your deck's format.
+    - Select your deck from the list and click **Join**.
+
+    **Create a new table**
+    - Click **New Table** in the lobby toolbar.
+    - Choose a game type (e.g. *Two Player Duel*), format (e.g. *Freeform*), and set time controls.
+    - Click **Create**, then select your deck and wait for an opponent to join.
+
+    Once all seats are filled the game starts automatically. XMage enforces all priority passes, timing rules, and triggered abilities — just choose your actions when prompted.
+  </Step>
+
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+---
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+## What's Next?
+
+Now that you've played your first game, here are some directions to explore:
+
+- **Explore formats** — try Commander, Oathbreaker, Booster Draft, or Sealed tournaments from the New Table dialog.
+- **Host your own server** — follow the [wiki guide](https://github.com/magefree/mage/wiki) to set up a private server for friends or configure a public-facing instance with authentication.
+- **Tune performance** — if the client feels sluggish, add JVM rendering flags in **Settings → Java → Client java options**. On Linux, `-Dsun.java2d.opengl=true` often provides a large speedup.
+- **Contribute** — XMage is open source. See the [Development Setup wiki](https://github.com/magefree/mage/wiki/Setting-up-your-Development-Environment) to start implementing cards or fixing bugs.
+- **Get help** — visit [r/XMage](https://www.reddit.com/r/XMage/), the [Discord](https://discord.gg/Pqf42yn), or [GitHub Issues](https://github.com/magefree/mage/issues) if you run into trouble.

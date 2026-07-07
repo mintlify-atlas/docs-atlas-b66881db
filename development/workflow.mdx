@@ -1,0 +1,261 @@
+---
+title: "XMage Development Workflow and Contribution Guidelines"
+sidebarTitle: "Workflow"
+description: "Learn the XMage contribution workflow: fork, branch, implement or fix, write tests, and submit a pull request on GitHub."
+---
+
+XMage is an open-source project that welcomes contributions of every kind — new card implementations, bug fixes, game-rule corrections, AI improvements, and UI enhancements. All changes flow through GitHub pull requests against the `master` branch. The workflow below covers everything from forking the repository to getting a PR merged, including how to write and run tests and what CI checks must pass.
+
+<Note>
+  The XMage wiki has dedicated pages that supplement this guide:
+  [Setting up your Development Environment](https://github.com/magefree/mage/wiki/Setting-up-your-Development-Environment),
+  [Development Testing Tools](https://github.com/magefree/mage/wiki/Development-Testing-Tools),
+  [Development Workflow](https://github.com/magefree/mage/wiki/Development-Workflow), and
+  [Development HOWTO Guides](https://github.com/magefree/mage/wiki/Development-HOWTO-Guides).
+  These pages contain additional detail on server configuration, cheat commands, and card-implementation patterns.
+</Note>
+
+## Contribution Flow
+
+<Steps>
+  ### Fork the repository and clone your fork
+
+  On GitHub, click **Fork** on [magefree/mage](https://github.com/magefree/mage) to create your own copy. Then clone it locally:
+
+  ```bash
+  git clone https://github.com/<your-username>/mage.git
+  cd mage
+  ```
+
+  Add the upstream remote so you can keep your fork in sync:
+
+  ```bash
+  git remote add upstream https://github.com/magefree/mage.git
+  ```
+
+  ### Create a feature or fix branch
+
+  Always work on a dedicated branch — never commit directly to `master`. Use a short, descriptive name that indicates what the branch contains:
+
+  ```bash
+  # For a new card implementation
+  git checkout -b feat/lightning-bolt
+
+  # For a bug fix
+  git checkout -b fix/lifelink-interaction
+
+  # For a game-rule correction
+  git checkout -b fix/commander-damage-tracking
+  ```
+
+  ### Build the project and confirm a clean baseline
+
+  Before making any changes, verify the project builds cleanly and all tests pass on your machine:
+
+  ```bash
+  mvn install -DskipTests   # fast build — confirms compilation
+  mvn test                  # runs the full Mage.Tests suite
+  ```
+
+  If any tests fail before you make a change, note them — they are pre-existing failures unrelated to your work.
+
+  ### Implement your change
+
+  Depending on the type of contribution, the relevant modules differ:
+
+  | Change type | Primary module(s) |
+  |------------|-------------------|
+  | New card implementation | `Mage.Sets/src/mage/cards/<letter>/` |
+  | New expansion set | `Mage.Sets/src/mage/sets/` |
+  | Game-rule bug fix | `Mage/src/main/java/mage/` |
+  | Server-side fix | `Mage.Server/src/main/java/mage/server/` |
+  | Client UI fix | `Mage.Client/src/main/java/mage/client/` |
+  | New game mode | `Mage.Server.Plugins/Mage.Game.<Name>/` |
+  | New AI behavior | `Mage.Server.Plugins/Mage.Player.AI*/` |
+
+  For card implementations, the `Utils/gen-card.pl` script scaffolds the boilerplate Java class from a template:
+
+  ```bash
+  cd Utils
+  perl gen-card.pl
+  # Enter the card name when prompted
+  ```
+
+  The generated file lands in the correct `Mage.Sets/src/mage/cards/<letter>/` directory, ready for you to fill in abilities and effects.
+
+  ### Write or update tests in `Mage.Tests/`
+
+  Every non-trivial change should be accompanied by a JUnit test. Tests live in:
+
+  ```
+  Mage.Tests/src/test/java/org/mage/test/
+  ```
+
+  Organized by category:
+
+  ```
+  cards/abilities/   — keyword and activated ability tests
+  cards/continuous/  — layer and continuous-effect tests
+  cards/damage/      — damage prevention and assignment tests
+  combat/            — attack and block tests
+  commander/         — commander-format rule tests
+  game/              — general game-scenario tests
+  player/            — player-action tests
+  ```
+
+  A minimal test class looks like this:
+
+  ```java
+  package org.mage.test.cards.abilities;
+
+  import mage.constants.PhaseStep;
+  import mage.constants.Zone;
+  import org.junit.Test;
+  import org.mage.test.serverside.base.CardTestPlayerBase;
+
+  public class LightningBoltTest extends CardTestPlayerBase {
+
+      @Test
+      public void testDealsDamageToPlayer() {
+          addCard(Zone.HAND, playerA, "Lightning Bolt");
+          addCard(Zone.BATTLEFIELD, playerA, "Mountain");
+
+          castSpell(1, PhaseStep.PRECOMBAT_MAIN, playerA, "Lightning Bolt", playerB);
+
+          setStopAt(1, PhaseStep.END_TURN);
+          execute();
+
+          assertLife(playerB, 17);
+      }
+  }
+  ```
+
+  ### Run the full test suite
+
+  Before pushing, confirm your changes do not break existing tests:
+
+  ```bash
+  mvn test
+  ```
+
+  To run only the tests in a specific class during development:
+
+  ```bash
+  mvn test -pl Mage.Tests -Dtest=LightningBoltTest
+  ```
+
+  To run a single test method:
+
+  ```bash
+  mvn test -pl Mage.Tests -Dtest=LightningBoltTest#testDealsDamageToPlayer
+  ```
+
+  ### Commit with a descriptive message
+
+  Use a clear, imperative commit message that summarizes what the commit does and — for card implementations — includes the card name:
+
+  ```bash
+  git add Mage.Sets/src/mage/cards/l/LightningBolt.java \
+          Mage.Tests/src/test/java/org/mage/test/cards/abilities/LightningBoltTest.java
+  git commit -m "Implement Lightning Bolt (deals 3 damage to any target)"
+  ```
+
+  For bug fixes, reference the GitHub issue number:
+
+  ```bash
+  git commit -m "Fix lifelink not applying to combat damage from tokens (#9876)"
+  ```
+
+  ### Push your branch and open a pull request
+
+  Push the branch to your fork:
+
+  ```bash
+  git push origin feat/lightning-bolt
+  ```
+
+  Then open a pull request on GitHub:
+  1. Go to [https://github.com/magefree/mage/pulls](https://github.com/magefree/mage/pulls).
+  2. Click **New pull request** → **compare across forks**.
+  3. Select your fork and branch as the **head**, and `magefree/mage master` as the **base**.
+  4. Write a description explaining what the PR does and, if it fixes a bug, how to reproduce the original issue.
+
+  ### CI checks must pass
+
+  XMage uses **GitHub Actions** (`.github/workflows/maven.yml`). On every push and pull request targeting `master`, the workflow:
+
+  1. Checks out the code.
+  2. Sets up JDK 17 (Temurin distribution).
+  3. Runs `mvn test -B` with a custom `log4j.properties` for CI-friendly output.
+
+  ```yaml
+  # From .github/workflows/maven.yml
+  - name: Set up JDK 17
+    uses: actions/setup-java@v5
+    with:
+      java-version: '17'
+      distribution: 'temurin'
+      cache: maven
+  - name: Build with Maven
+    run: mvn test -B -Dxmage.dataCollectors.printGameLogs=false \
+           -Dlog4j.configuration=file:${GITHUB_WORKSPACE}/.travis/log4j.properties
+  ```
+
+  PRs are not merged until the Actions build shows a green checkmark. Fix any failures before requesting a review.
+</Steps>
+
+## Keeping Your Fork in Sync
+
+Before starting new work, sync your local `master` with upstream to avoid merge conflicts:
+
+```bash
+git fetch upstream
+git checkout master
+git merge upstream/master
+git push origin master
+```
+
+Then create your branch from the updated `master`.
+
+## Bug Reports
+
+Report bugs via [GitHub Issues](https://github.com/magefree/mage/issues). A useful bug report includes:
+
+- **XMage version** (shown in the title bar of the client)
+- **Operating system and Java version** (`java -version`)
+- **Steps to reproduce** — ideally a minimal deck and sequence of plays
+- **Expected behavior** vs. **actual behavior**
+- Screenshots or log output if relevant
+
+The project also maintains a [FAQ label](https://github.com/magefree/mage/issues?q=is%3Aissue+label%3AFAQ+) for common problems and their solutions.
+
+## Feature Requests
+
+Feature requests are also filed as [GitHub Issues](https://github.com/magefree/mage/issues). When requesting a new feature:
+
+- Describe the desired behavior and the use case it serves.
+- If it relates to a specific card or game rule, cite the card name and ruling.
+- Check existing issues first to avoid duplicates.
+
+## Code Style
+
+XMage follows the Java conventions already established in the codebase:
+
+- **Indentation**: 4 spaces (no tabs).
+- **Braces**: on the same line as control statements (K&R style), always present even for single-statement blocks.
+- **Naming**: `camelCase` for methods and variables; `PascalCase` for class names; `UPPER_SNAKE_CASE` for constants.
+- **Card classes**: one public class per file, class name matches the card name with all non-alphanumeric characters removed (e.g., `"Swords to Plowshares"` → `SwordsToPlowshares.java`).
+- **No wildcard imports**: prefer explicit `import` statements.
+
+The Maven build uses `maven-compiler-plugin` 3.8.1 with `useIncrementalCompilation=false`. There is no enforced checkstyle plugin in the root POM, but reviewers will flag style deviations in the PR.
+
+<Tip>
+  Start a local server with `-Dxmage.testMode=true` (or the `-testMode=true` argument) to quickly verify card interactions without needing to authenticate. Test mode enables **cheat commands** in the client — you can add any card to your hand, set life totals, skip to a specific phase, and more. This is the fastest way to confirm that a new card ability works correctly before writing a formal JUnit test. See the [Development Testing Tools](https://github.com/magefree/mage/wiki/Development-Testing-Tools) wiki page for the full list of available commands.
+</Tip>
+
+## Community Channels
+
+- **GitHub Issues**: bug reports and feature requests — [github.com/magefree/mage/issues](https://github.com/magefree/mage/issues)
+- **Discord**: [https://discord.gg/Pqf42yn](https://discord.gg/Pqf42yn)
+- **Reddit**: [r/XMage](https://www.reddit.com/r/XMage/)
+- **Gitter**: [gitter.im/magefree/mage](https://gitter.im/magefree/mage)

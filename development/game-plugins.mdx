@@ -1,0 +1,265 @@
+---
+title: "XMage Plugin System: Game Types, Decks, and Tournaments"
+sidebarTitle: "Game Plugins"
+description: "Understand and extend XMage's plugin system for game types, player types, tournament formats, deck validators, and draft cubes."
+---
+
+XMage's game engine is designed to be extended without modifying core server code. Almost every user-facing game variant — from Two Player Duel to Commander to Jumpstart — is delivered as a separate JAR plugin that the server discovers and loads at startup. This architecture makes it possible to add new game modes, formats, and tournament structures by dropping a new JAR into the `plugins/` directory and registering it in `config.xml`.
+
+## How Plugin Loading Works
+
+At startup, `Main.java` scans the `plugins/` directory (relative to the server working directory) and uses a `PluginClassLoader` to load each JAR. Plugin classes are then registered into the appropriate factory (`GameFactory`, `TournamentFactory`, `PlayerFactory`, `CubeFactory`, `DeckValidatorFactory`) based on which `<…Types>` section of `config.xml` they appear in.
+
+The server also scans an `extensions/` directory for extension packages. Each subdirectory inside `extensions/` is treated as an extension package and loaded via `ExtensionPackageLoader`.
+
+<Note>
+  Plugin JARs are loaded in the order they appear in `config.xml`. If two plugins register the same `name`, the last one wins. Extension packages in the `extensions/` directory are loaded after all plugin JARs. Extension packages can contribute additional cards, sets, and token images without modifying the main server distribution.
+</Note>
+
+## Plugin Categories
+
+`config.xml` defines five plugin categories, each mapped to a dedicated XML element.
+
+### 1. `<playerTypes>` — Player Implementations
+
+Defines the types of players that can sit at a table. Each entry maps a display name to a Java class that implements the `Player` interface.
+
+```xml
+<playerTypes>
+    <playerType name="Human"
+                jar="mage-player-human.jar"
+                className="mage.player.human.HumanPlayer"/>
+    <playerType name="Computer - mad"
+                jar="mage-player-ai-ma.jar"
+                className="mage.player.ai.ComputerPlayerControllableProxy"/>
+    <playerType name="Computer - monte carlo"
+                jar="mage-player-aimcts.jar"
+                className="mage.player.ai.ComputerPlayerMCTS"/>
+    <playerType name="Computer - draftbot"
+                jar="mage-player-ai-draft-bot.jar"
+                className="mage.player.ai.ComputerDraftPlayer"/>
+</playerTypes>
+```
+
+See the [AI Players](/development/ai-players) page for a deep-dive on the computer player implementations.
+
+### 2. `<gameTypes>` — Game Variants
+
+Each `<gameType>` entry wires together a `Match` implementation (which manages a best-of-N series) and a `MatchType` implementation (which describes the rules). Both are required.
+
+```xml
+<gameTypes>
+    <gameType name="Two Player Duel"
+              jar="mage-game-twoplayerduel.jar"
+              className="mage.game.TwoPlayerMatch"
+              typeName="mage.game.TwoPlayerDuelType"/>
+    <gameType name="Free For All"
+              jar="mage-game-freeforall.jar"
+              className="mage.game.FreeForAllMatch"
+              typeName="mage.game.FreeForAllType"/>
+    <gameType name="Commander Two Player Duel"
+              jar="mage-game-commanderduel.jar"
+              className="mage.game.CommanderDuelMatch"
+              typeName="mage.game.CommanderDuelType"/>
+    <gameType name="Commander Free For All"
+              jar="mage-game-commanderfreeforall.jar"
+              className="mage.game.CommanderFreeForAllMatch"
+              typeName="mage.game.CommanderFreeForAllType"/>
+    <gameType name="Tiny Leaders Two Player Duel"
+              jar="mage-game-tinyleadersduel.jar"
+              className="mage.game.TinyLeadersDuelMatch"
+              typeName="mage.game.TinyLeadersDuelType"/>
+    <gameType name="Canadian Highlander Two Player Duel"
+              jar="mage-game-canadianhighlanderduel.jar"
+              className="mage.game.CanadianHighlanderDuelMatch"
+              typeName="mage.game.CanadianHighlanderDuelType"/>
+    <gameType name="Oathbreaker Two Player Duel"
+              jar="mage-game-oathbreakerduel.jar"
+              className="mage.game.OathbreakerDuelMatch"
+              typeName="mage.game.OathbreakerDuelType"/>
+    <gameType name="Oathbreaker Free For All"
+              jar="mage-game-oathbreakerfreeforall.jar"
+              className="mage.game.OathbreakerFreeForAllMatch"
+              typeName="mage.game.OathbreakerFreeForAllType"/>
+    <gameType name="Brawl Two Player Duel"
+              jar="mage-game-brawlduel.jar"
+              className="mage.game.BrawlDuelMatch"
+              typeName="mage.game.BrawlDuelType"/>
+    <gameType name="Brawl Free For All"
+              jar="mage-game-brawlfreeforall.jar"
+              className="mage.game.BrawlFreeForAllMatch"
+              typeName="mage.game.BrawlFreeForAllType"/>
+    <gameType name="Momir Basic Two Player Duel"
+              jar="mage-game-momirduel.jar"
+              className="mage.game.MomirDuelMatch"
+              typeName="mage.game.MomirDuelType"/>
+    <gameType name="Momir Basic Free For All"
+              jar="mage-game-momir.jar"
+              className="mage.game.MomirFreeForAllMatch"
+              typeName="mage.game.MomirFreeForAllType"/>
+    <!-- Freeform Commander variants, Penny Dreadful, Pillar of the Paruns... -->
+</gameTypes>
+```
+
+The full list of built-in game types shipped in the default `config.xml`:
+
+| Display Name | Match Class | Type Class |
+|---|---|---|
+| Two Player Duel | `TwoPlayerMatch` | `TwoPlayerDuelType` |
+| Free For All | `FreeForAllMatch` | `FreeForAllType` |
+| Commander Two Player Duel | `CommanderDuelMatch` | `CommanderDuelType` |
+| Commander Free For All | `CommanderFreeForAllMatch` | `CommanderFreeForAllType` |
+| Tiny Leaders Two Player Duel | `TinyLeadersDuelMatch` | `TinyLeadersDuelType` |
+| Canadian Highlander Two Player Duel | `CanadianHighlanderDuelMatch` | `CanadianHighlanderDuelType` |
+| Penny Dreadful Commander Free For All | `PennyDreadfulCommanderFreeForAllMatch` | `PennyDreadfulCommanderFreeForAllType` |
+| Freeform Commander Two Player Duel | `FreeformCommanderDuelMatch` | `FreeformCommanderDuelType` |
+| Freeform Commander Free For All | `FreeformCommanderFreeForAllMatch` | `FreeformCommanderFreeForAllType` |
+| Freeform Unlimited Commander | `FreeformUnlimitedCommanderMatch` | `FreeformUnlimitedCommanderType` |
+| Custom Pillar of the Paruns Two Player Duel | `CustomPillarOfTheParunsDuelMatch` | `CustomPillarOfTheParunsDuelType` |
+| Oathbreaker Two Player Duel | `OathbreakerDuelMatch` | `OathbreakerDuelType` |
+| Oathbreaker Free For All | `OathbreakerFreeForAllMatch` | `OathbreakerFreeForAllType` |
+| Brawl Two Player Duel | `BrawlDuelMatch` | `BrawlDuelType` |
+| Brawl Free For All | `BrawlFreeForAllMatch` | `BrawlFreeForAllType` |
+| Momir Basic Two Player Duel | `MomirDuelMatch` | `MomirDuelType` |
+| Momir Basic Free For All | `MomirFreeForAllMatch` | `MomirFreeForAllType` |
+
+### 3. `<tournamentTypes>` — Tournament Formats
+
+Tournament types follow the same two-class pattern (`className` for the runnable tournament, `typeName` for the descriptor). The built-in set covers Constructed (elimination and Swiss), multiple Booster Draft variants, Sealed, and Jumpstart:
+
+```xml
+<tournamentTypes>
+    <tournamentType name="Constructed Elimination"
+                    jar="mage-tournament-constructed.jar"
+                    className="mage.tournament.ConstructedEliminationTournament"
+                    typeName="mage.tournament.ConstructedEliminationTournamentType"/>
+    <tournamentType name="Constructed Swiss"
+                    jar="mage-tournament-constructed.jar"
+                    className="mage.tournament.ConstructedSwissTournament"
+                    typeName="mage.tournament.ConstructedSwissTournamentType"/>
+    <tournamentType name="Booster Draft Elimination"
+                    jar="mage-tournament-booster-draft.jar"
+                    className="mage.tournament.BoosterDraftEliminationTournament"
+                    typeName="mage.tournament.BoosterDraftEliminationTournamentType"/>
+    <tournamentType name="Booster Draft Elimination (Cube)"
+                    jar="mage-tournament-booster-draft.jar"
+                    className="mage.tournament.BoosterDraftEliminationTournament"
+                    typeName="mage.tournament.BoosterDraftEliminationCubeTournamentType"/>
+    <tournamentType name="Sealed Elimination"
+                    jar="mage-tournament-sealed.jar"
+                    className="mage.tournament.SealedEliminationTournament"
+                    typeName="mage.tournament.SealedEliminationTournamentType"/>
+    <tournamentType name="Jumpstart Elimination"
+                    jar="mage-tournament-sealed.jar"
+                    className="mage.tournament.JumpstartEliminationTournament"
+                    typeName="mage.tournament.JumpstartEliminationTournamentType"/>
+    <tournamentType name="Jumpstart Swiss"
+                    jar="mage-tournament-sealed.jar"
+                    className="mage.tournament.JumpstartSwissTournament"
+                    typeName="mage.tournament.JumpstartSwissTournamentType"/>
+    <!-- ... additional booster draft variants (Random, Reshuffled, Rich Man) ... -->
+</tournamentTypes>
+```
+
+### 4. `<deckTypes>` — Format Validators
+
+Deck type entries only require `name`, `jar`, and `className` (no `typeName`). Each class validates a submitted deck against a specific format's legality rules. The single JAR `mage-deck-constructed.jar` ships classes for every constructed and block-constructed format:
+
+| Format Family | Examples |
+|---|---|
+| Rotating constructed | Standard, Pioneer, Modern, Legacy, Vintage, Pauper, Historic |
+| Highlander variants | Australian, Canadian, European Highlander |
+| Commander family | Commander, Duel Commander, MTGO 1v1, Centurion, Freeform Commander |
+| Old School | Old School 93/94, Italian Rules, Channel Fireball Rules, EudoGames, EC Rules |
+| Block Constructed | Innistrad, Scars of Mirrodin, Return to Ravnica, Khans of Tarkir, and more |
+| Variant | Tiny Leaders, Momir Basic, Brawl, Oathbreaker, Freeform, Freeform Unlimited |
+| Limited | `mage-deck-limited.jar` → `mage.deck.Limited` |
+
+### 5. `<draftCubes>` — Cube Configurations
+
+Draft cube entries don't use `typeName`. Each class defines the card pool and pack composition for cube drafts. All ship inside `mage-tournament-booster-draft.jar`:
+
+```xml
+<draftCubes>
+    <draftCube name="Cube From Deck"
+               jar="mage-tournament-booster-draft.jar"
+               className="mage.tournament.cubes.CubeFromDeck"/>
+    <draftCube name="MTGO Legacy Cube"
+               jar="mage-tournament-booster-draft.jar"
+               className="mage.tournament.cubes.LegacyCube"/>
+    <draftCube name="MTGO Vintage Cube"
+               jar="mage-tournament-booster-draft.jar"
+               className="mage.tournament.cubes.VintageCube"/>
+    <draftCube name="MTGO Legendary Cube"
+               jar="mage-tournament-booster-draft.jar"
+               className="mage.tournament.cubes.LegendaryCube"/>
+    <draftCube name="MTGA Cube 2020 April"
+               jar="mage-tournament-booster-draft.jar"
+               className="mage.tournament.cubes.MTGACube2020April"/>
+    <!-- ... named community cubes ... -->
+</draftCubes>
+```
+
+## Plugin Entry Attribute Summary
+
+Every plugin element in `config.xml` shares the same attribute schema:
+
+| Attribute | Required | Description |
+|---|---|---|
+| `name` | ✅ | Display name shown in the client UI |
+| `jar` | ✅ | Filename of the JAR inside the `plugins/` directory |
+| `className` | ✅ | Fully-qualified name of the main implementation class |
+| `typeName` | Game & tournament types only | Fully-qualified name of the companion type descriptor class |
+
+## Maven Module Structure
+
+Each plugin in `config.xml` corresponds to a Maven module under `Mage.Server.Plugins/`. The module compiles to the JAR named in the `jar` attribute:
+
+```
+Mage.Server.Plugins/
+├── Mage.Deck.Constructed/          → mage-deck-constructed.jar
+├── Mage.Deck.Limited/              → mage-deck-limited.jar
+├── Mage.Game.TwoPlayerDuel/        → mage-game-twoplayerduel.jar
+├── Mage.Game.CommanderDuel/        → mage-game-commanderduel.jar
+├── Mage.Game.CommanderFreeForAll/  → mage-game-commanderfreeforall.jar
+├── Mage.Game.BrawlDuel/            → mage-game-brawlduel.jar
+├── Mage.Game.OathbreakerDuel/      → mage-game-oathbreakerduel.jar
+├── Mage.Player.Human/              → mage-player-human.jar
+├── Mage.Player.AI/                 → (base AI; bundled into MA jar)
+├── Mage.Player.AI.MA/              → mage-player-ai-ma.jar
+├── Mage.Player.AIMCTS/             → mage-player-aimcts.jar
+├── Mage.Player.AI.DraftBot/        → mage-player-ai-draft-bot.jar
+├── Mage.Tournament.BoosterDraft/   → mage-tournament-booster-draft.jar
+├── Mage.Tournament.Constructed/    → mage-tournament-constructed.jar
+└── Mage.Tournament.Sealed/         → mage-tournament-sealed.jar
+```
+
+## Adding a New Game Mode
+
+<Steps>
+  <Step title="Create a Maven module">
+    Add a new directory under `Mage.Server.Plugins/` (e.g. `Mage.Game.MyVariant`) with its own `pom.xml`. Reference the parent POM in `Mage.Server.Plugins/pom.xml`.
+  </Step>
+  <Step title="Implement the required interfaces">
+    Create a class extending an existing `Match` subclass (e.g. `TwoPlayerMatch`) for your match logic, and a class implementing `MatchType` for the rules descriptor. Both classes must be in the same JAR.
+  </Step>
+  <Step title="Build the JAR">
+    Run `mvn package` from the module root. The output JAR will be in `target/`.
+  </Step>
+  <Step title="Deploy the JAR">
+    Copy the JAR into the server's `plugins/` directory.
+  </Step>
+  <Step title="Register in config.xml">
+    Add a `<gameType>` entry with the correct `name`, `jar`, `className`, and `typeName`:
+
+    ```xml
+    <gameType name="My Variant Two Player Duel"
+              jar="mage-game-myvariant.jar"
+              className="mage.game.MyVariantMatch"
+              typeName="mage.game.MyVariantType"/>
+    ```
+  </Step>
+  <Step title="Restart the server">
+    The `PluginClassLoader` only scans the `plugins/` directory at startup. A full server restart is required to pick up new or updated JARs.
+  </Step>
+</Steps>

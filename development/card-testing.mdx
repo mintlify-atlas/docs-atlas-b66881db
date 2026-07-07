@@ -1,0 +1,364 @@
+---
+title: "Write and Run Tests for XMage Card Implementations"
+sidebarTitle: "Card Testing"
+description: "Use the XMage test framework in Mage.Tests to write JUnit tests that verify card abilities, triggered effects, and complex interactions."
+---
+
+XMage ships a dedicated test module, `Mage.Tests`, that lets you simulate complete game states in JUnit without starting a server or a client. You set up what is in each player's hand, battlefield, graveyard, and library; declare what actions each player takes and in which phase; then call `execute()` to run the simulation and assert the resulting state with purpose-built assertion helpers. This approach covers the vast majority of card-correctness issues before any human playtesting occurs.
+
+## Project Layout
+
+Tests live under `Mage.Tests/src/test/java/org/mage/test/` and are organised by concern:
+
+| Path | Contents |
+|---|---|
+| `org/mage/test/cards/` | Card-specific tests grouped by mechanic (`abilities/`, `combat/`, `triggers/`, etc.) |
+| `org/mage/test/cards/single/<set-code>/` | Per-card test classes, one per card, one class per set code folder |
+| `org/mage/test/AI/basic/` | AI behaviour tests (attack decisions, targeting, simulation stability) |
+| `org/mage/test/combat/` | Combat-specific tests |
+| `org/mage/test/commander/` | Commander-format tests |
+| `org/mage/test/multiplayer/` | Multiplayer-specific tests |
+| `org/mage/test/serverside/` | Base classes and framework infrastructure |
+
+All card-specific test classes extend `CardTestPlayerBase`, which sets up a two-player duel (`TwoPlayerDuel`) with `playerA` and `playerB` using the default test deck (`"RB Aggro.dck"`).
+
+## Base Test Class: `CardTestPlayerBase`
+
+```java
+// org.mage.test.serverside.base.CardTestPlayerBase
+public abstract class CardTestPlayerBase extends CardTestPlayerAPIImpl {
+
+    public CardTestPlayerBase() {
+        deckNameA = "RB Aggro.dck";
+        deckNameB = "RB Aggro.dck";
+    }
+
+    @Override
+    protected Game createNewGameAndPlayers()
+            throws GameException, FileNotFoundException {
+        Game game = new TwoPlayerDuel(
+                MultiplayerAttackOption.LEFT,
+                RangeOfInfluence.ONE,
+                MulliganType.GAME_DEFAULT.getMulligan(0),
+                60, 20, 7);
+        playerA = createPlayer(game, "PlayerA", deckNameA);
+        playerB = createPlayer(game, "PlayerB", deckNameB);
+        return game;
+    }
+}
+```
+
+The two players `playerA` and `playerB` are `TestPlayer` instances exposed as protected fields in `CardTestPlayerAPIImpl`. Every setup and assertion method accepts either `playerA` or `playerB` as its first argument.
+
+## Key Test API Methods
+
+### Setting Up Game State
+
+All setup calls must be made **before** `execute()`. They are queued and applied when the simulation begins.
+
+| Method | Description |
+|---|---|
+| `addCard(Zone zone, TestPlayer player, String cardName)` | Put one copy of a card into a zone |
+| `addCard(Zone zone, TestPlayer player, String cardName, int count)` | Put `count` copies into a zone |
+| `addCard(Zone zone, TestPlayer player, String cardName, int count, boolean tapped)` | Put cards into a zone, optionally tapped |
+| `skipInitShuffling()` | Disable the initial library shuffle so `addCard(Zone.LIBRARY, ...)` cards appear in the order you add them |
+
+The `Zone` enum values used most often are `Zone.BATTLEFIELD`, `Zone.HAND`, `Zone.GRAVEYARD`, `Zone.LIBRARY`, and `Zone.EXILE`.
+
+### Declaring Player Actions
+
+Actions are also queued before `execute()`. The `turnNum` parameter refers to the overall turn count (turn 1 is playerA's first turn, turn 2 is playerB's first turn, and so on).
+
+| Method | Description |
+|---|---|
+| `castSpell(int turnNum, PhaseStep step, TestPlayer player, String cardName)` | Cast a spell with no targets |
+| `castSpell(int turnNum, PhaseStep step, TestPlayer player, String cardName, String targetName)` | Cast a spell targeting a named permanent or player |
+| `castSpell(int turnNum, PhaseStep step, TestPlayer player, String cardName, Player target)` | Cast targeting a player object |
+| `activateAbility(int turnNum, PhaseStep step, TestPlayer player, String ability)` | Activate an ability whose rule text starts with `ability` |
+| `activateAbility(int turnNum, PhaseStep step, TestPlayer player, String ability, String... targetNames)` | Activate an ability with one or more targets |
+| `attack(int turnNum, TestPlayer player, String attacker)` | Declare a creature as attacker (attacks the opponent by default) |
+| `attack(int turnNum, TestPlayer player, String attacker, TestPlayer defendingPlayer)` | Declare an attacker aimed at a specific player |
+| `block(int turnNum, TestPlayer player, String blocker, String attacker)` | Declare a blocker |
+| `setChoice(TestPlayer player, String choice)` | Supply a named choice (for modal spells, discard prompts, etc.) |
+| `addTarget(TestPlayer player, String targetName)` | Add an additional target for a queued action |
+| `waitStackResolved(int turnNum, PhaseStep step)` | Wait for the current stack to fully resolve before continuing |
+
+### Controlling Simulation Flow
+
+| Method | Description |
+|---|---|
+| `setStopAt(int turnNum, PhaseStep step)` | Tell the simulator where to stop (required before `execute()`) |
+| `execute()` | Run the game simulation up to the stop point |
+| `setStrictChooseMode(true)` | Fail the test if any unexpected choice prompt appears (recommended) |
+
+### Assertion Methods
+
+All assertions are called **after** `execute()`.
+
+| Method | Description |
+|---|---|
+| `assertPermanentCount(Player player, String cardName, int count)` | Number of named permanents on the battlefield |
+| `assertPermanentCount(Player player, int count)` | Total number of permanents on the battlefield |
+| `assertGraveyardCount(Player player, String cardName, int count)` | Number of named cards in graveyard |
+| `assertGraveyardCount(Player player, int count)` | Total graveyard size |
+| `assertHandCount(Player player, String cardName, int count)` | Named cards in hand |
+| `assertHandCount(Player player, int count)` | Total hand size |
+| `assertLife(Player player, int life)` | Player's current life total |
+| `assertTapped(String cardName, boolean tapped)` | Whether a named permanent is tapped |
+| `assertTappedCount(String cardName, boolean tapped, int count)` | How many copies of a permanent are (un)tapped |
+| `assertPowerToughness(Player player, String cardName, int power, int toughness)` | Current P/T of a permanent |
+| `assertCounterCount(Player player, String cardName, CounterType type, int count)` | Counters on a named permanent |
+| `assertCounterCount(Player player, CounterType type, int count)` | Counters of a type on a player |
+| `assertAbility(Player player, String cardName, Ability ability, boolean mustHave)` | Whether a permanent has a specific ability |
+| `assertTokenCount(Player player, String tokenName, int count)` | Number of tokens with a given name |
+| `assertType(String cardName, CardType type, boolean mustHave)` | Card type assertion |
+| `assertColor(Player player, String cardName, String searchColors, boolean mustHave)` | Color assertion |
+
+## Writing a Basic Card Test
+
+<Steps>
+
+### Create the test class
+
+Place the file in `Mage.Tests/src/test/java/org/mage/test/cards/single/<set-code>/`. Use the set code as the subdirectory (e.g. `m14` for Magic 2014). Follow the naming convention `<ClassName>Test.java`:
+
+```java
+package org.mage.test.cards.single.m14;
+
+import mage.constants.PhaseStep;
+import mage.constants.Zone;
+import org.junit.Test;
+import org.mage.test.serverside.base.CardTestPlayerBase;
+
+public class LightningBoltTest extends CardTestPlayerBase {
+    // test methods go here
+}
+```
+
+### Enable strict choice mode
+
+Call `setStrictChooseMode(true)` at the start of every test method. This turns unexpected choice prompts into test failures instead of hangs, making it much easier to diagnose missing `setChoice()` or `addTarget()` calls.
+
+### Set up the game state
+
+Use `addCard(...)` to place all relevant cards into the appropriate zones. Add mana sources to the battlefield so the player can actually cast spells:
+
+```java
+addCard(Zone.BATTLEFIELD, playerA, "Mountain", 1);
+addCard(Zone.HAND, playerA, "Lightning Bolt");
+addCard(Zone.BATTLEFIELD, playerB, "Grizzly Bears"); // 2/2 creature
+```
+
+### Queue player actions
+
+Declare what happens and when. Turn 1 is playerA's first turn; `PhaseStep.PRECOMBAT_MAIN` is the first main phase:
+
+```java
+castSpell(1, PhaseStep.PRECOMBAT_MAIN, playerA, "Lightning Bolt",
+        "Grizzly Bears");
+```
+
+### Set the stop point and execute
+
+```java
+setStopAt(1, PhaseStep.END_TURN);
+execute();
+```
+
+### Write assertions
+
+```java
+assertGraveyardCount(playerA, "Lightning Bolt", 1); // spell resolved
+assertGraveyardCount(playerB, "Grizzly Bears", 1);  // creature died
+assertLife(playerA, 20);                             // no damage to playerA
+assertLife(playerB, 20);                             // bolt hit creature, not player
+```
+
+</Steps>
+
+## Complete Example Tests
+
+<CodeGroup>
+
+```java LightningBolt — instant kills creature
+package org.mage.test.cards.single.lea;
+
+import mage.constants.PhaseStep;
+import mage.constants.Zone;
+import org.junit.Test;
+import org.mage.test.serverside.base.CardTestPlayerBase;
+
+public class LightningBoltTest extends CardTestPlayerBase {
+
+    @Test
+    public void testBoltKillsCreature() {
+        addCard(Zone.BATTLEFIELD, playerA, "Mountain", 1);
+        addCard(Zone.HAND, playerA, "Lightning Bolt");
+        addCard(Zone.BATTLEFIELD, playerB, "Grizzly Bears"); // 2/2
+
+        setStrictChooseMode(true);
+        castSpell(1, PhaseStep.PRECOMBAT_MAIN, playerA,
+                "Lightning Bolt", "Grizzly Bears");
+        setStopAt(1, PhaseStep.END_TURN);
+        execute();
+
+        assertGraveyardCount(playerA, "Lightning Bolt", 1);
+        assertGraveyardCount(playerB, "Grizzly Bears", 1);
+        assertPermanentCount(playerB, "Grizzly Bears", 0);
+        assertLife(playerB, 20);
+    }
+
+    @Test
+    public void testBoltDamagesPlayer() {
+        addCard(Zone.BATTLEFIELD, playerA, "Mountain", 1);
+        addCard(Zone.HAND, playerA, "Lightning Bolt");
+
+        setStrictChooseMode(true);
+        castSpell(1, PhaseStep.PRECOMBAT_MAIN, playerA,
+                "Lightning Bolt", playerB);
+        setStopAt(1, PhaseStep.END_TURN);
+        execute();
+
+        assertLife(playerA, 20);
+        assertLife(playerB, 17); // 20 - 3
+    }
+}
+```
+
+```java AugurOfBolas — ETB triggered ability
+package org.mage.test.cards.abilities.enters;
+
+import mage.constants.PhaseStep;
+import mage.constants.Zone;
+import org.junit.Test;
+import org.mage.test.serverside.base.CardTestPlayerBase;
+
+public class AugurOfBolasTest extends CardTestPlayerBase {
+
+    @Test
+    public void testAbility() {
+        // Put Lightning Bolts on top of library in order
+        addCard(Zone.LIBRARY, playerA, "Lightning Bolt", 3);
+        skipInitShuffling();
+
+        addCard(Zone.BATTLEFIELD, playerA, "Island", 2);
+        // When Augur of Bolas enters, look at top 3 cards;
+        // reveal an instant or sorcery and put it in hand.
+        addCard(Zone.HAND, playerA, "Augur of Bolas"); // {1}{U}
+
+        castSpell(1, PhaseStep.PRECOMBAT_MAIN, playerA, "Augur of Bolas");
+        setChoice(playerA, true);              // yes, reveal a card
+        addTarget(playerA, "Lightning Bolt"); // put this one in hand
+        setChoice(playerA, "Lightning Bolt"); // order the rest to bottom
+
+        setStrictChooseMode(true);
+        setStopAt(1, PhaseStep.BEGIN_COMBAT);
+        execute();
+
+        assertPermanentCount(playerA, "Augur of Bolas", 1);
+        assertHandCount(playerA, "Lightning Bolt", 1);
+    }
+}
+```
+
+```java Activated ability — Lightning Storm redirect
+package org.mage.test.cards.abilities.activated;
+
+import mage.constants.PhaseStep;
+import mage.constants.Zone;
+import org.junit.Test;
+import org.mage.test.serverside.base.CardTestPlayerBase;
+
+public class LightningStormTest extends CardTestPlayerBase {
+
+    @Test
+    public void activateByBothPlayersTest() {
+        addCard(Zone.BATTLEFIELD, playerA, "Mountain", 3);
+        addCard(Zone.HAND, playerA, "Lightning Storm"); // {1}{R}{R}
+        addCard(Zone.HAND, playerA, "Mountain");
+        addCard(Zone.HAND, playerB, "Mountain");
+
+        // playerA casts, targets playerB
+        castSpell(1, PhaseStep.PRECOMBAT_MAIN, playerA,
+                "Lightning Storm", playerB);
+
+        // playerB discards a land to add counters and retarget
+        activateAbility(1, PhaseStep.PRECOMBAT_MAIN, playerB, "Discard");
+        setChoice(playerB, "Mountain"); // discard cost
+        setChoice(playerB, true);       // change target
+        addTarget(playerB, playerA);    // new target: playerA
+
+        // playerA discards a land to add counters and retarget
+        activateAbility(1, PhaseStep.PRECOMBAT_MAIN, playerA, "Discard");
+        setChoice(playerA, "Mountain");
+        setChoice(playerA, true);
+        addTarget(playerA, playerB);
+
+        setStrictChooseMode(true);
+        setStopAt(1, PhaseStep.PRECOMBAT_MAIN);
+        execute();
+
+        assertGraveyardCount(playerA, "Lightning Storm", 1);
+        assertLife(playerA, 20);
+        assertLife(playerB, 20 - 3 - 2 - 2); // base 3 + 2 per counter set
+    }
+}
+```
+
+</CodeGroup>
+
+## Running Tests
+
+Run the entire test suite from the repository root:
+
+```bash
+mvn test
+```
+
+Run only the `Mage.Tests` module:
+
+```bash
+mvn test -pl Mage.Tests
+```
+
+Run a single test class:
+
+```bash
+mvn test -pl Mage.Tests -Dtest=LightningBoltTest
+```
+
+Run a single test method:
+
+```bash
+mvn test -pl Mage.Tests -Dtest=LightningBoltTest#testBoltKillsCreature
+```
+
+<Note>
+The test framework boots a lightweight in-process game engine. No server process or network connection is required. Tests are self-contained and run entirely in the Maven Surefire plugin.
+</Note>
+
+## Interactive Testing with Test Mode
+
+For manual verification of complex interactions, start the XMage server with `-DtestMode=true`. In test mode, special cheat commands are enabled in the client that allow you to:
+
+- Add any card to your hand mid-game
+- Set your life total
+- Fast-forward to a specific turn or phase
+- Observe internal game state via the server console
+
+This is particularly useful for verifying visual feedback, card art rendering, and timing edge cases that are difficult to encode in deterministic JUnit tests.
+
+## Using the `gen-card-test.pl` Script
+
+Just as `gen-card.pl` scaffolds a card class, `gen-card-test.pl` (also in `Utils/`) generates a test skeleton:
+
+```bash
+cd Utils
+perl gen-card-test.pl "Card Name"
+```
+
+The generated file is placed in `Mage.Tests/src/test/java/org/mage/test/cards/single/<set-code>/` and includes the correct package declaration, imports, class name, and one placeholder `@Test` method with `setStrictChooseMode(true)` already wired in, matching the template in `Utils/cardTest.tmpl`.
+
+<Tip>
+The AI test classes under `org/mage/test/AI/basic/` are excellent reference implementations for complex multi-turn scenarios. `CastCreaturesTest`, `CombatTest`, and `TriggeredAbilityTest` show how to set up board states that span several turns, use the `waitStackResolved()` helper to sequence stack interactions, and assert life, permanent counts, and graveyard state all in a single test method.
+</Tip>

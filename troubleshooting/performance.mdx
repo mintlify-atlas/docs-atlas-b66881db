@@ -1,0 +1,152 @@
+---
+title: "Tune XMage Client Performance with JVM Flags"
+sidebarTitle: "Performance"
+description: "Improve XMage rendering speed and responsiveness using Java 2D flags for OpenGL, XRender, and memory settings on Windows, Linux, and macOS."
+---
+
+XMage runs on the Java Runtime Environment, which means its rendering pipeline is configurable through standard JVM flags. If you have a modern GPU, switching from the default software renderer to a hardware-accelerated one can dramatically improve frame rates, card animation smoothness, and overall UI responsiveness — often with a single flag. This page documents the flags sourced from the official readme and Java 2D documentation so you can tune the client to your hardware.
+
+## How to Apply JVM Flags
+
+All JVM flags are entered directly in the XMage Launcher. No file editing is required.
+
+<Steps>
+  <Step title="Open the XMage Launcher">
+    Start `XMageLauncher` as you normally would.
+  </Step>
+  <Step title="Open Settings">
+    In the launcher menu bar, click **Settings**. The Settings window will open.
+  </Step>
+  <Step title="Navigate to the Java tab">
+    Click the **Java** tab inside the Settings window.
+  </Step>
+  <Step title="Edit Client Java Options">
+    Find the **Client java options** text field. Add your desired flags here, separated by spaces. For example:
+
+    ```bash
+    -Dsun.java2d.opengl=true -Xmx2G
+    ```
+  </Step>
+  <Step title="Restart the client">
+    Close the client if it is running and relaunch it from the launcher. The new flags take effect on the next client start.
+  </Step>
+</Steps>
+
+<Note>
+  The full list of Java 2D system properties supported by JRE 8 is available in the [official Oracle documentation](https://docs.oracle.com/javase/8/docs/technotes/guides/2d/flags.html). XMage targets JRE 8, so all flags on that page are potentially applicable.
+</Note>
+
+## Flag Reference Table
+
+The table below summarises the flags most relevant to XMage performance.
+
+| Flag | Platform | Description | Example value |
+|---|---|---|---|
+| `-Dsun.java2d.opengl` | Linux | Enable OpenGL hardware acceleration via Java 2D | `true` |
+| `-Dsun.java2d.xrender` | Linux | Enable XRender pipeline (lighter than OpenGL) | `true` |
+| `-Dsun.java2d.d3d` | Windows | Disable Direct3D acceleration to fix rendering artifacts | `false` |
+| `-Xmx` | All | Set maximum JVM heap size | `2G`, `4G` |
+
+## Per-Platform Recommendations
+
+<Tabs>
+  <Tab title="Windows">
+    On Windows, Java 2D uses Direct3D for hardware acceleration by default. This works well on most systems but can produce visual glitches — distorted card art, broken button borders, or other GUI artifacts — on certain GPU and driver combinations.
+
+    **Disable Direct3D (artifact fix):**
+
+    ```bash
+    -Dsun.java2d.d3d=false
+    ```
+
+    This switches rendering to a software fallback. You lose Direct3D acceleration but eliminate the artifacts. If your system renders correctly without this flag, there is no benefit to adding it.
+
+    **Increase heap memory:**
+
+    ```bash
+    -Xmx2G
+    ```
+
+    See the [Memory section](#increase-heap-memory) below for details.
+  </Tab>
+  <Tab title="Linux">
+    Linux has two hardware-accelerated Java 2D pipelines worth trying: **OpenGL** and **XRender**. Both can significantly reduce CPU usage and improve rendering speed compared to the default software pipeline.
+
+    **Enable OpenGL:**
+
+    ```bash
+    -Dsun.java2d.opengl=true
+    ```
+
+    <Warning>
+      There is a known JDK bug ([JDK-6545140](https://bugs.openjdk.java.net/browse/JDK-6545140)) that causes the file chooser dialog to malfunction when OpenGL is enabled. You encounter this dialog when loading a deck from disk. The [officially suggested workaround](https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6439320) triggers a crash in XMage, so it is **not a safe option**. If you rely on the file chooser regularly, use XRender instead.
+
+      **Workaround for i3 window manager users:** Toggle the window's *floating* mode to force a re-render after the file chooser closes. This avoids the crash without disabling OpenGL.
+    </Warning>
+
+    **Enable XRender:**
+
+    ```bash
+    -Dsun.java2d.xrender=true
+    ```
+
+    XRender uses the X server's XRender extension to delegate 2D drawing to the GPU. It does not have the file chooser bug that affects OpenGL, making it the safer first choice on Linux.
+
+    **Increase heap memory:**
+
+    ```bash
+    -Xmx2G
+    ```
+
+    See the [Memory section](#increase-heap-memory) below for details.
+  </Tab>
+  <Tab title="macOS">
+    On macOS, Java 2D uses Quartz by default. There are no official GPU-acceleration flags equivalent to OpenGL or XRender for the macOS pipeline in JRE 8.
+
+    The most impactful tuning you can do on macOS is to increase the available heap memory:
+
+    ```bash
+    -Xmx2G
+    ```
+
+    If you are on Apple Silicon (M1/M2), ensure you are using an ARM-native JDK first — an x86 JRE running under Rosetta will not benefit from any rendering flags. See the [macOS M1/M2 issue](/troubleshooting/common-issues#can-t-run-xmage-on-apple-silicon-m1-m2) for the correct JDK sources.
+  </Tab>
+</Tabs>
+
+## Increase Heap Memory
+
+<Tip>
+  A safe and universally applicable starting point for any platform is `-Xmx2G`. This raises the maximum heap to 2 GB, giving XMage more room before the garbage collector has to work hard — which translates directly to fewer frame drops during large multiplayer games. If you have 8 GB of RAM or more, this change carries essentially no downside.
+</Tip>
+
+XMage loads a large number of card images and game objects into memory during a session. The default JVM heap is often too small for long or complex games, causing the garbage collector to run frequently and producing visible stutters.
+
+```bash
+-Xmx2G
+```
+
+Increase the value further if you have spare RAM:
+
+```bash
+-Xmx4G
+```
+
+Note that increasing memory beyond what actually gets used has no benefit — if `-Xmx2G` results in stable play, raising it to `-Xmx8G` will not make the game faster.
+
+More background on JVM memory settings: [Stack Overflow reference](https://stackoverflow.com/a/57839720/8401696).
+
+## Combining Flags
+
+You can combine multiple flags in the **Client java options** field, separated by spaces. A typical high-performance Linux configuration might look like:
+
+```bash
+-Dsun.java2d.xrender=true -Xmx2G
+```
+
+And a Windows artifact-fix configuration with extra memory:
+
+```bash
+-Dsun.java2d.d3d=false -Xmx2G
+```
+
+Always test one flag at a time so you can identify which change caused a regression if something breaks.

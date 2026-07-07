@@ -1,0 +1,69 @@
+---
+title: "XMage System Requirements and Prerequisites"
+sidebarTitle: "Requirements"
+description: "Hardware and software requirements for running XMage as a player or self-hosting a server on Windows, Linux, or macOS."
+---
+
+XMage is a multiplatform Java application that runs on Windows, Linux, and macOS. Whether you are joining an existing public server as a player or hosting your own private server for friends and AI opponents, understanding the minimum requirements before you begin will save you troubleshooting time later. The sections below outline what you need for each role.
+
+## Java
+
+Both the XMage client and server require **Java 8 or later**. The project is compiled with `<java.version>1.8</java.version>` source and target compatibility (as declared in the root `pom.xml`), so any JRE or JDK from version 8 onward will work. Oracle JDK, OpenJDK, Eclipse Temurin, and Amazon Corretto are all compatible distributions.
+
+<Note>
+  On **macOS with Apple Silicon (M1/M2/M3)**, use a native ARM64 JDK such as [Eclipse Temurin for macOS AArch64](https://adoptium.net/) or [Azul Zulu for ARM](https://www.azul.com/downloads/). Running an x86-64 JDK under Rosetta 2 works but may cause rendering glitches and reduced performance.
+</Note>
+
+## Supported Operating Systems
+
+| Platform | Status |
+|----------|--------|
+| Windows 10 / 11 (64-bit) | ✅ Fully supported |
+| Windows 7 / 8 (64-bit) | ⚠️ Works, not actively tested |
+| Linux (x86_64) | ✅ Fully supported |
+| Linux (ARM / Raspberry Pi) | ⚠️ Community-supported |
+| macOS 11+ (Intel) | ✅ Fully supported |
+| macOS 12+ (Apple Silicon) | ✅ Requires native ARM JDK |
+
+## Hardware Requirements
+
+The table below shows recommended minimums for each role. Running both client and server on the same machine requires combining the figures.
+
+| Component | Client (player) | Server (self-hosted) |
+|-----------|-----------------|----------------------|
+| **Java** | 8 or later | 8 or later |
+| **RAM** | 512 MB minimum; 1–2 GB recommended with images loaded | 1 GB minimum; 2–4 GB for active multiplayer |
+| **CPU** | Any dual-core, 1 GHz+ | Any dual-core, 2 GHz+ for multiple concurrent games |
+| **Disk space** | ~200 MB base install; card image cache can reach **several GB** after full download | ~200 MB base install; additional space for saved games if enabled |
+| **Display** | 1280 × 800 or higher | Not required (headless) |
+| **Network** | TCP access to server on ports **17171** and **17179** | Ports 17171 and 17179 open inbound through firewall/NAT |
+
+<Tip>
+  If you only want to play against the AI and do not need to download full card artwork, the disk footprint stays well under 500 MB. Card images are cached incrementally — you only download the sets you actually play with.
+</Tip>
+
+## Network Ports
+
+XMage uses two TCP ports for its JBoss Remoting bisocket transport:
+
+| Port | Purpose | Config attribute |
+|------|---------|-----------------|
+| **17171** | Primary server socket (client connections) | `port` |
+| **17179** | Secondary / callback socket | `secondaryBindPort` |
+
+Clients must be able to reach **both** ports on the server. If `secondaryBindPort` is set to `-1` in `config.xml`, the server will choose a random ephemeral port at startup — this can be problematic behind NAT or strict firewalls, so it is best to keep the explicit value for public servers.
+
+## macOS-Specific Notes
+
+<Warning>
+  **Gatekeeper** may block the XMage launcher JAR or accompanying scripts the first time you run them. If you see a message saying the application "can't be opened because it is from an unidentified developer," go to **System Settings → Privacy & Security** and click **Open Anyway**, or launch via Terminal to bypass the check.
+</Warning>
+
+macOS users with M1 or M2 hardware should also verify that their installed Java binary is a native ARM build:
+
+```bash
+java -XshowSettings:property -version 2>&1 | grep "os.arch"
+# Expected on Apple Silicon: os.arch = aarch64
+```
+
+If you see `x86_64`, install an AArch64 JDK to avoid potential GUI freezes and degraded performance.

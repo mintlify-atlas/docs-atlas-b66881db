@@ -1,0 +1,250 @@
+---
+title: "XMage Repository and Module Structure"
+sidebarTitle: "Project Structure"
+description: "Understand the XMage Maven multi-module layout: game engine, client, server, card sets, plugins, and utility scripts."
+---
+
+The XMage repository is organized as a Maven multi-module project rooted at `pom.xml` (`groupId: org.mage`, `artifactId: mage-root`, version `1.4.60`). Each top-level directory is its own Maven module with its own `pom.xml`, compiled in dependency order by a single `mvn install` from the root. Understanding which module owns which responsibility makes it straightforward to find the right place for a bug fix, a new card implementation, or a server-side rule change.
+
+## Top-Level Directory Tree
+
+```text
+mage/
+├── Mage/                    # Core game engine
+├── Mage.Common/             # Shared client–server interfaces and view objects
+├── Mage.Server/             # Server application and entry point
+├── Mage.Client/             # Swing-based GUI client
+├── Mage.Sets/               # All card implementations (33,000+ cards)
+├── Mage.Server.Plugins/     # Pluggable game types, player AIs, tournaments
+├── Mage.Plugins/            # Counter plugin (Mage.Counter.Plugin)
+├── Mage.Server.Console/     # Minimal server console application
+├── Mage.Tests/              # JUnit integration tests for game rules and AI
+├── Mage.Verify/             # Card data verification utilities
+├── Mage.Reports/            # JaCoCo code-coverage aggregation
+├── Utils/                   # Perl/Python scripts for card generation and releases
+├── repository/              # Local Maven repository for vendored JARs
+├── pom.xml                  # Root POM — declares all modules and shared config
+└── Makefile                 # Convenience targets: build, package, install, clean
+```
+
+## Module Reference
+
+<CardGroup cols={2}>
+  <Card title="Mage" icon="gear">
+    Core game engine. Contains every game rule, data type, and mechanic.
+  </Card>
+  <Card title="Mage.Common" icon="arrows-left-right">
+    Shared interfaces and view objects passed between client and server over the network.
+  </Card>
+  <Card title="Mage.Server" icon="server">
+    Server application. Manages sessions, tables, users, tournaments, and authentication.
+  </Card>
+  <Card title="Mage.Client" icon="display">
+    Swing-based GUI client — deck editor, game panel, draft panel, and connect dialog.
+  </Card>
+  <Card title="Mage.Sets" icon="layer-group">
+    Java implementation of every card, organized by the first letter of the card name.
+  </Card>
+  <Card title="Mage.Server.Plugins" icon="puzzle-piece">
+    Pluggable game modes, player types (human and AI), tournament formats, and deck validators.
+  </Card>
+  <Card title="Mage.Tests" icon="flask">
+    JUnit integration tests for game rules, AI behavior, combat, commanders, and more.
+  </Card>
+  <Card title="Utils" icon="wrench">
+    Perl and Python scripts for card generation, data maintenance, and release packaging.
+  </Card>
+</CardGroup>
+
+---
+
+## `Mage/` — Core Game Engine
+
+`Mage` is the foundation every other module depends on. It contains no server or client code — only the pure game model and rule enforcement.
+
+Key source packages under `Mage/src/main/java/mage/`:
+
+| Package / File | Purpose |
+|----------------|---------|
+| `cards/Card.java`, `CardImpl.java` | Base card interface and implementation; covers all card subtypes (`SplitCard`, `DoubleFacedCard`, `AdventureCard`, `MeldCard`, `ModalDoubleFacedCard`, `TransformingDoubleFacedCard`, `RoomCard`, and more) |
+| `game/Game.java`, `GameImpl.java`, `GameState.java` | Central game interface, implementation, and snapshot of the complete game state |
+| `game/turn/` | Turn structure: `Turn`, `Phase`, `Step` and all concrete phases (`BeginningPhase`, `CombatPhase`, `EndPhase`) and steps (`UntapStep`, `UpkeepStep`, `DrawStep`, `DeclareAttackersStep`, `DeclareBlockersStep`, `CombatDamageStep`, …) |
+| `game/combat/` | Combat engine |
+| `game/events/` | Game event system — cards subscribe to events via triggered abilities |
+| `abilities/` | `Ability`, `AbilityImpl`, `ActivatedAbility`, `DelayedTriggeredAbility`, `LoyaltyAbility`, `Mode`, `Modes` |
+| `players/Player.java`, `PlayerImpl.java` | Player interface and implementation: hand, library, graveyard, mana pool, life total |
+| `Mana.java`, `ManaSymbol.java`, `MageInt.java` | Mana representation and power/toughness |
+| `filter/` | Type-safe card, permanent, spell, and player filters used by abilities and effects (`FilterCard`, `FilterPermanent`, `FilterSpell`, `StaticFilters`) |
+| `counters/Counter.java`, `CounterType.java`, `Counters.java` | Counter model (e.g., `BoostCounter`) |
+| `constants/` | All game-wide enumerations: `Zone`, `CardType`, `SubType`, `SpellAbilityType`, `Outcome`, `PhaseStep`, etc. |
+| `target/` | Target selectors used by abilities and spells |
+| `util/` | Game utilities |
+| `watchers/` | Watcher framework for tracking events across turns |
+
+## `Mage.Common/` — Shared Client–Server Interfaces
+
+`Mage.Common` contains everything that must be understood by both the client and the server without pulling in game-engine internals or UI code.
+
+Key items under `Mage.Common/src/main/java/mage/`:
+
+| File / Package | Purpose |
+|----------------|---------|
+| `interfaces/MageServer.java` | RMI interface defining every server command a client can invoke (`authRegister`, `connectUser`, `startMatch`, `joinGame`, `playCard`, etc.) |
+| `interfaces/MageClient.java` | Callback interface the server uses to push updates back to a client |
+| `interfaces/ServerState.java` | Snapshot of server-visible state sent to clients on connect |
+| `remote/` | `Connection` configuration object and `SessionImpl` — client-side session that wraps JBoss Remoting calls to the server |
+| `view/` | Serializable view objects (`CardView`, `GameView`, `PlayerView`, `DraftPickView`, `TournamentView`, …) — the server converts internal game objects into these before sending them over the wire |
+| `constants/` | Constants shared across client and server |
+| `utils/` | Shared utility helpers |
+
+## `Mage.Server/` — Server Application
+
+`Mage.Server` is the runnable server. Its entry point is `mage.server.Main`.
+
+```
+Mage.Server/
+├── config/
+│   └── config.xml          # Default server configuration
+├── src/main/java/mage/server/
+│   ├── Main.java            # Entry point; parses args, starts JBoss Remoting transport
+│   ├── MageServerImpl.java  # Implements MageServer interface
+│   ├── Session.java / SessionManagerImpl.java   # Per-connection session lifecycle
+│   ├── User.java / UserManagerImpl.java         # Connected user tracking
+│   ├── Room.java / RoomImpl.java                # Lobby rooms
+│   ├── TableController.java / TableManagerImpl.java  # Game table management
+│   ├── AuthorizedUser.java / AuthorizedUserRepository.java  # Persistent user auth (H2 DB)
+│   ├── MailClientImpl.java / MailgunClientImpl.java         # Email delivery
+│   ├── tournament/          # Tournament controller and scheduling
+│   ├── game/                # Server-side game session wrappers
+│   ├── draft/               # Draft session management
+│   ├── rating/              # Glicko rating system
+│   └── util/
+│       └── PluginClassLoader.java  # Loads Mage.Server.Plugins JARs at runtime
+```
+
+The server is configured via `config/config.xml` (located relative to the working directory). To override the path, pass `-Dxmage.config.path=<path>` as a JVM argument. Test mode is enabled with `-Dxmage.testMode=true` or the `-testMode=true` command-line argument.
+
+<Note>
+  The `PluginClassLoader` in `mage.server.util` dynamically loads plugin JARs from the `plugins/` folder at startup. This is how game types, AI players, and tournament types from `Mage.Server.Plugins/` are registered without hard-coding their dependencies into the server module.
+</Note>
+
+## `Mage.Client/` — Swing GUI Client
+
+`Mage.Client` is the desktop client application built with Java Swing.
+
+```
+Mage.Client/src/main/java/mage/client/
+├── MageFrame.java          # Main application window (JFrame)
+├── MagePane.java           # Base tabbed content pane
+├── SessionHandler.java     # Bridges UI actions to MageServer remote calls
+├── dialog/                 # All dialogs: ConnectDialog, AboutDialog, PreferencesDialog, …
+├── deckeditor/             # Deck editor panel
+├── draft/                  # Booster draft UI panel
+├── game/                   # In-game play panel, card rendering, battlefield
+├── table/                  # Lobby table list and creation UI
+├── tournament/             # Tournament bracket and status UI
+├── components/             # Reusable Swing widgets (card viewer, mana symbols, …)
+├── preference/             # User preferences model and persistence
+├── remote/                 # Client-side remote session wrappers
+└── themes/                 # Look-and-feel theme support
+```
+
+`MageFrame` is the main window; `mage.client.MageFrame` is the class to run when launching the client. `SessionHandler` is the single point that converts all GUI events into calls on the `MageServer` remote interface.
+
+## `Mage.Sets/` — Card Implementations
+
+`Mage.Sets` contains a Java class for every implemented Magic: The Gathering card — over 33,000 unique cards and 91,000+ reprints in total.
+
+```
+Mage.Sets/src/mage/cards/
+├── a/    # Cards whose name starts with A (1,832 files in this directory alone)
+├── b/
+├── c/
+│   …
+└── z/
+```
+
+Each subdirectory holds individual Java files named after the card, for example `Mage.Sets/src/mage/cards/l/LightningBolt.java`. Every class extends `CardImpl` and registers its abilities in a constructor.
+
+Set definitions live at `Mage.Sets/src/mage/sets/` — one Java class per expansion set, extending `ExpansionSet` from `Mage/`.
+
+## `Mage.Server.Plugins/` — Pluggable Game Modes and AI
+
+Each subdirectory in `Mage.Server.Plugins/` is an independent Maven module compiled to its own JAR and loaded at server startup by `PluginClassLoader`.
+
+```
+Mage.Server.Plugins/
+├── Mage.Game.TwoPlayerDuel/
+├── Mage.Game.FreeForAll/
+├── Mage.Game.CommanderDuel/
+├── Mage.Game.CommanderFreeForAll/
+├── Mage.Game.BrawlDuel/
+├── Mage.Game.BrawlFreeForAll/
+├── Mage.Game.OathbreakerDuel/
+├── Mage.Game.OathbreakerFreeForAll/
+├── Mage.Game.MomirDuel/
+├── Mage.Game.MomirGame/
+├── Mage.Game.TinyLeadersDuel/
+├── Mage.Game.CanadianHighlanderDuel/
+├── Mage.Game.FreeformCommanderDuel/
+├── Mage.Game.FreeformCommanderFreeForAll/
+├── Mage.Game.FreeformUnlimitedCommander/
+├── Mage.Game.PennyDreadfulCommanderFreeForAll/
+├── Mage.Game.CustomPillarOfTheParunsDuel/
+├── Mage.Player.Human/       # Human player plugin
+├── Mage.Player.AI/          # Monte Carlo–style AI opponent
+├── Mage.Player.AI.MA/       # "MA" (more advanced) AI variant
+├── Mage.Player.AI.DraftBot/ # AI draft pick bot
+├── Mage.Player.AIMCTS/      # Monte Carlo Tree Search AI
+├── Mage.Tournament.BoosterDraft/
+├── Mage.Tournament.Sealed/
+├── Mage.Tournament.Constructed/
+├── Mage.Deck.Constructed/   # Constructed deck validator (Standard, Modern, Legacy, …)
+└── Mage.Deck.Limited/       # Limited deck validator
+```
+
+## `Mage.Tests/` — Integration Tests
+
+`Mage.Tests` contains JUnit 5 integration tests that spin up a real `GameImpl` instance and assert game-rule behavior. Tests are organized under `src/test/java/org/mage/test/`:
+
+| Sub-package | Tests |
+|------------|-------|
+| `cards/abilities/` | Keyword and activated ability behavior |
+| `cards/continuous/` | Continuous effects and layer interactions |
+| `cards/copy/` | Copy effects |
+| `cards/control/` | Control-change effects |
+| `cards/damage/` | Damage assignment and prevention |
+| `combat/` | Attack and block rules |
+| `commander/` | Commander-specific rules |
+| `AI/` | AI decision-making tests |
+| `deck/` | Deck validation |
+| `game/` | General game-rule scenarios |
+| `mulligan/` | Mulligan procedure variants |
+| `multiplayer/` | Multi-player rules |
+| `player/` | Player action tests |
+| `rollback/` | Game-state rollback (undo) tests |
+
+## `Mage.Reports/` — Coverage Aggregation
+
+`Mage.Reports` contains only a `pom.xml` that configures the `jacoco-maven-plugin` aggregate report goal. It collects `.exec` files from all modules and produces unified HTML, XML, and CSV reports under `Mage.Reports/target/site/jacoco-aggregate/`. Coverage results are uploaded to [SonarCloud](https://sonarcloud.io/project/overview?id=magefree_mage).
+
+## `Mage.Verify/` — Card Data Verification
+
+`Mage.Verify` provides utilities that verify card data consistency — for example, checking that every card class registered in `Mage.Sets` has a valid `CardSetInfo` and that collector numbers match known Scryfall data.
+
+## `Utils/` — Developer Scripts
+
+`Utils/` contains Perl and Python scripts used for card implementation and release management:
+
+| Script | Purpose |
+|--------|---------|
+| `gen-card.pl` | Scaffold a new card Java class from a template |
+| `gen-existing-cards-by-set.pl` | Generate stubs for already-implemented cards from a given set |
+| `gen-simple-cards-by-set.pl` | Generate fully-auto-implementable cards from a set |
+| `mtg-cards-data-scryfall.py` | Refresh `mtg-cards-data.txt` from the Scryfall API |
+| `update-list-implemented-cards.pl` | Update the tracker of implemented vs. unimplemented cards |
+| `build-and-package.pl` | Full build and distribution packaging (the canonical release script) |
+| `version-bump.pl` | Bump the version string across all `pom.xml` files |
+| `find_new_cards.pl` | Identify newly spoiled cards not yet in the codebase |
+
+Template files (`cardClass.tmpl`, `cardTest.tmpl`, etc.) define the boilerplate for generated card and test classes.

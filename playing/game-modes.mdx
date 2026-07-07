@@ -1,0 +1,164 @@
+---
+title: "XMage Game Formats and Supported Game Modes"
+sidebarTitle: "Game Modes"
+description: "XMage supports 15+ Magic: The Gathering formats including Commander, Standard, Modern, Draft, Sealed, Pauper, Oathbreaker, and Momir Basic."
+---
+
+XMage ships with one of the broadest format catalogs of any Magic: The Gathering client, covering everything from kitchen-table Freeform to tournament-legal Standard and the full Commander family. All formats have full rules enforcement — the server validates deck legality before a game starts and enforces game rules throughout every match. Whether you want a two-player competitive duel, a 10-player Commander pod, or a nostalgic Old School 93/94 game, there is a game type and a matching deck validator waiting for you.
+
+## Highlight Formats
+
+<CardGroup cols={2}>
+  <Card title="Commander" icon="crown">
+    The most popular multiplayer format. 100-card singleton decks, a legendary commander in the command zone, up to 10 players. Full color-identity and commander-tax rules enforced.
+  </Card>
+  <Card title="Booster Draft" icon="layer-group">
+    Rotate booster packs around the table picking one card at a time, then build a 40-card deck. Supported as a full tournament with 4–16 players and bot fill-in.
+  </Card>
+  <Card title="Standard" icon="calendar">
+    Legal sets rotate automatically. Deck validator enforces the current Standard card pool and 60-card minimum / 4-of rule.
+  </Card>
+  <Card title="Modern" icon="bolt">
+    All sets from 8th Edition onward (with ban list). Fast, combo-rich environment with full rules enforcement including the modern ban list.
+  </Card>
+  <Card title="Oathbreaker" icon="scroll">
+    60-card singleton with a planeswalker commander and a "signature spell" in the command zone. Two-player duel and free-for-all variants available.
+  </Card>
+  <Card title="Pauper" icon="coins">
+    Only commons allowed. Full ban-list enforcement. A budget-friendly competitive format.
+  </Card>
+</CardGroup>
+
+## Game Types
+
+Game types define the *structure* of a match — how many players, which zone rules apply (commander tax, etc.), and which special rules are active. Every game type listed below is registered in the server's `config.xml` and is selectable when creating a new table.
+
+### Duel (Two-Player) Formats
+
+| Game Type | Description |
+|---|---|
+| **Two Player Duel** | Classic 1v1 match. The baseline format for most constructed play. |
+| **Commander Two Player Duel** | Commander rules in a 1v1 setting; uses standard Commander ban list. |
+| **Tiny Leaders Two Player Duel** | Commander-style 1v1 with a legendary creature of CMC ≤ 3; deck max CMC ≤ 3. |
+| **Canadian Highlander Two Player Duel** | 100-card singleton 1v1 using the Canadian Highlander points system. |
+| **Freeform Commander Two Player Duel** | Commander rules with no official ban list — bring anything. |
+| **Custom Pillar of the Paruns Two Player Duel** | Variant duel using the Pillar of the Paruns custom rule set. |
+| **Oathbreaker Two Player Duel** | Oathbreaker rules in a 1v1 setting. |
+| **Brawl Two Player Duel** | Brawl (Standard-legal commander variant) in a 1v1 setting. |
+| **Momir Basic Two Player Duel** | Each turn you may pay X generic mana and discard a card to put a random creature of CMC X into play, 1v1. |
+
+### Multiplayer (Free For All) Formats
+
+| Game Type | Description |
+|---|---|
+| **Free For All** | Multiplayer game with no special zone rules; each player starts at 20 life. |
+| **Commander Free For All** | Commander rules for 3–10 players; 40 starting life. The most popular mode. |
+| **Penny Dreadful Commander Free For All** | Commander with Penny Dreadful pricing restrictions on the card pool. |
+| **Freeform Commander Free For All** | Commander rules, no ban list, multiplayer. |
+| **Freeform Unlimited Commander** | Commander rules with no singleton restriction and no ban list. |
+| **Oathbreaker Free For All** | Oathbreaker rules for multiplayer pods. |
+| **Brawl Free For All** | Brawl rules in a multiplayer pod. |
+| **Momir Basic Free For All** | Momir Basic variant for multiple players. |
+
+## Deck / Format Validators
+
+Deck validators enforce legality — card pool, set legality, deck size, sideboard size, and ban/restricted lists. Select a validator when creating a table or when checking a deck in the deck editor.
+
+### Constructed
+
+| Validator | Notes |
+|---|---|
+| **Standard** | Current rotating Standard card pool |
+| **Pioneer** | Sets from Return to Ravnica onward, with Pioneer ban list |
+| **Modern** | 8th Edition onward, with Modern ban list |
+| **Modern – No Banned List** | Modern card pool with the ban list removed |
+| **Legacy** | All sets, with Legacy ban list |
+| **Vintage** | All sets, restricted list enforced |
+| **Pauper** | Commons only, Pauper ban list |
+| **Historic** | Arena Historic card pool |
+| **Eternal** | Eternal format (all sets, no banned list) |
+| **Extended** | Classic Extended format |
+| **Frontier** | Sets from Magic 2015 (M15) onward |
+| **Historical Type 2** | Vintage Standard seasons for historical play |
+| **Super Type 2** | Super Standard variant |
+| **Premodern** | Sets from 4th Edition through Onslaught |
+| **Freeform** | 60-card minimum, any cards, 4-of limit |
+| **Freeform Unlimited** | No restrictions at all — any card, any quantity |
+
+### Block Constructed
+
+XMage includes validators for 15 classic Magic blocks:
+
+| Block |
+|---|
+| Amonkhet Block |
+| Battle for Zendikar Block |
+| Innistrad Block |
+| Ixalan Block |
+| Kaladesh Block |
+| Kamigawa Block |
+| Khans of Tarkir Block |
+| Lorwyn Block |
+| Return to Ravnica Block |
+| Scars of Mirrodin Block |
+| Shadowmoor Block |
+| Shadows over Innistrad Block |
+| Shards of Alara Block |
+| Theros Block |
+| Zendikar Block |
+
+### Highlander Variants
+
+| Validator | Notes |
+|---|---|
+| **Australian Highlander** | 100-card singleton with the Australian Highlander points system |
+| **Canadian Highlander** | 100-card singleton with the Canadian Highlander points system |
+| **European Highlander** | 100-card singleton under European Highlander rules |
+
+### Old School 93/94
+
+Old School Magic with five different rule-set variants:
+
+| Variant |
+|---|
+| Old School 93/94 (default) |
+| Old School 93/94 – Italian Rules |
+| Old School 93/94 – Channel Fireball Rules |
+| Old School 93/94 – EudoGames Rules |
+| Old School 93/94 – EC Rules |
+
+### Variant Magic
+
+| Validator | Notes |
+|---|---|
+| **Commander** | 100-card singleton, legendary commander, color identity |
+| **Duel Commander** | 1v1 Commander with its own separate ban list |
+| **MTGO 1v1 Commander** | Commander under MTGO 1v1 rules |
+| **Centurion Commander** | European 1v1 Commander variant |
+| **Tiny Leaders** | Singleton commander of CMC ≤ 3, deck max CMC ≤ 3 |
+| **Momir Basic** | Basic lands only; creatures generated randomly |
+| **Penny Dreadful Commander** | Commander with Penny Dreadful pricing restrictions |
+| **Freeform Commander** | Commander rules, no ban list |
+| **Freeform Unlimited Commander** | Commander rules, no singleton restriction, no ban list |
+| **Brawl** | Standard-legal 60-card commander variant |
+| **Oathbreaker** | 60-card singleton with planeswalker commander + signature spell |
+
+### Custom Sets
+
+| Validator | Notes |
+|---|---|
+| **Block Constructed Custom – Star Wars** | Uses the fan-made XMage Star Wars custom card set |
+
+### Limited
+
+| Validator | Notes |
+|---|---|
+| **Limited** | Used for Draft and Sealed pools; enforces 40-card minimum with no set restrictions |
+
+## Choosing the Right Game Type and Validator
+
+When you create a new table you choose *both* a **game type** (defines the match structure) and a **deck type** (validates the deck you bring). They must be compatible — for example, use **Commander Two Player Duel** as the game type and **Variant Magic – Commander** as the deck type for a standard 1v1 Commander game.
+
+<Note>
+  Custom sets like the Star Wars fan set are fully implemented in XMage. Select **Block Constructed Custom – Star Wars** as the deck type to play with those cards in a dedicated constructed environment.
+</Note>

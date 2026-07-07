@@ -1,0 +1,149 @@
+---
+title: "Set Up the XMage Development Environment"
+sidebarTitle: "Environment Setup"
+description: "Clone the XMage repository, install JDK 8+, configure Maven, import into IntelliJ IDEA or Eclipse, and run the server locally for development."
+---
+
+XMage is a Maven multi-module Java project. Getting a local development environment running requires a JDK, Apache Maven, Git, and an IDE — after that, a single command builds every module from the root `pom.xml`. This page walks through each step from cloning the repository to booting both the server and client on your own machine.
+
+## Prerequisites
+
+Before cloning, make sure the following tools are available on your `PATH`:
+
+| Tool | Minimum version | Notes |
+|------|----------------|-------|
+| **JDK** | 8 | The project's source and target compatibility is `1.8`; newer JDKs (11, 17, 21) compile it without issue — CI uses JDK 17 |
+| **Apache Maven** | 3.6 | Manages all module builds and dependencies |
+| **Git** | any recent | Used to clone and manage branches |
+| **IDE** | — | IntelliJ IDEA is recommended; Eclipse also works |
+
+<Note>
+  The root `pom.xml` sets `<java.version>1.8</java.version>` for both `<source>` and `<target>` in `maven-compiler-plugin`, so the compiled bytecode runs on Java 8 runtimes. You can freely compile with a newer JDK (the GitHub Actions CI workflow uses JDK 17 via `actions/setup-java`). If you see warnings about preview features or deprecated flags, they are harmless.
+</Note>
+
+## Full Setup Walkthrough
+
+<Steps>
+  ### Clone the repository
+
+  Clone the official XMage repository from GitHub:
+
+  ```bash
+  git clone https://github.com/magefree/mage.git
+  cd mage
+  ```
+
+  If you plan to contribute, fork the repository first and clone your fork instead (see [Workflow](/development/workflow)).
+
+  ### Build all modules (skip tests for speed)
+
+  From the repository root, run a full Maven install. The `-DskipTests` flag skips the JUnit test suite so the initial build finishes quickly:
+
+  ```bash
+  mvn install -DskipTests
+  ```
+
+  This compiles and installs every module declared in the root `pom.xml` — `Mage`, `Mage.Common`, `Mage.Server`, `Mage.Sets`, `Mage.Client`, `Mage.Plugins`, `Mage.Server.Plugins`, `Mage.Server.Console`, `Mage.Tests`, `Mage.Verify`, and `Mage.Reports` — into your local Maven repository.
+
+  The equivalent Makefile target is:
+
+  ```bash
+  make build   # runs: mvn install package -DskipTests
+  ```
+
+  ### Run the test suite
+
+  To execute the full JUnit integration test suite (located in `Mage.Tests/`):
+
+  ```bash
+  mvn test
+  ```
+
+  Tests are run by `maven-surefire-plugin` 3.1.2 with a tree-view reporter. Failed tests print a full stack trace; successful tests are silent by default.
+
+  ### Import into IntelliJ IDEA
+
+  1. Open IntelliJ IDEA and choose **File → Open**.
+  2. Select the repository root directory (`mage/`).
+  3. IntelliJ detects the root `pom.xml` and automatically imports all 11+ Maven modules. Each module (`Mage`, `Mage.Server`, `Mage.Client`, …) appears as a separate source root in the **Maven** side panel.
+  4. Let IntelliJ finish indexing and downloading dependencies before proceeding.
+
+  For Eclipse, use **File → Import → Existing Maven Projects** and select the same root directory.
+
+  ### Configure a run configuration for the server
+
+  Create a new **Application** run configuration in IntelliJ:
+
+  | Field | Value |
+  |-------|-------|
+  | **Main class** | `mage.server.Main` |
+  | **Module classpath** | `Mage.Server` |
+  | **Working directory** | `$PROJECT_DIR$/Mage.Server` |
+  | **VM options** | `-Dxmage.config.path=config/config.xml` |
+
+  The server reads its configuration from `Mage.Server/config/config.xml` relative to the working directory by default. To point to a different file, change the `-Dxmage.config.path` property accordingly.
+
+  To enable **test mode** — which turns off password checks, enables cheat commands, skips deck validation, and prevents idle-disconnect during debugging — add the system property:
+
+  ```
+  -Dxmage.testMode=true
+  ```
+
+  <Note>
+    Test mode is automatically enabled for developer builds (builds that `version.isDeveloperBuild()` returns `true` for). It provides fast-game buttons, cheat commands, simplified registration and login, and disables connection-validation pings so the IDE debugger does not cause client disconnects.
+  </Note>
+
+  ### Configure a run configuration for the client
+
+  Create a second **Application** run configuration:
+
+  | Field | Value |
+  |-------|-------|
+  | **Main class** | `mage.client.MageFrame` |
+  | **Module classpath** | `Mage.Client` |
+  | **Working directory** | `$PROJECT_DIR$/Mage.Client` |
+
+  Launch the server run configuration first, wait for it to print `MAGE SERVER version: …`, then start the client.
+
+  ### Verify the connection
+
+  In the client's connect dialog, enter:
+  - **Server**: `localhost`
+  - **Port**: `17171` (the default from `config/config.xml`)
+  - **Username / Password**: any value when test mode is active (authentication is bypassed)
+
+  A successful connection confirms the environment is working correctly.
+</Steps>
+
+## Useful Build Commands
+
+```bash
+# Build everything, skip tests
+mvn install -DskipTests
+
+# Run all tests
+mvn test
+
+# Build and package distributable zip files for client and server
+make package
+
+# Generate JaCoCo HTML coverage report (output: Mage.Reports/target/site/jacoco-aggregate/index.html)
+mvn install -Djacoco.skip=false -Dmaven.test.failure.ignore=true
+
+# Generate JaCoCo XML coverage report (for SonarCloud upload)
+mvn install -Djacoco.formats=XML -Djacoco.skip=false -Dmaven.test.failure.ignore=true
+
+# Clean all build artifacts
+mvn clean
+# or
+make clean
+```
+
+## Developer Wiki Resources
+
+The XMage wiki contains detailed supplementary guides for developers:
+
+- [Setting up your Development Environment](https://github.com/magefree/mage/wiki/Setting-up-your-Development-Environment)
+- [Development Testing Tools](https://github.com/magefree/mage/wiki/Development-Testing-Tools)
+- [Development Workflow](https://github.com/magefree/mage/wiki/Development-Workflow)
+- [Development HOWTO Guides](https://github.com/magefree/mage/wiki/Development-HOWTO-Guides)

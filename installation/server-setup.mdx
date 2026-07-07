@@ -1,0 +1,254 @@
+---
+title: "Host Your Own XMage Server"
+sidebarTitle: "Server Setup"
+description: "Set up a private or public XMage server on Linux, Windows, or macOS, configure ports, authentication, and AI opponents."
+---
+
+Running your own XMage server lets you play against AI opponents without relying on a public instance, host private matches with friends, or operate a public server for the wider community. The server is a headless Java process configured entirely through a single XML file. This guide walks through initial setup, every configuration option, firewall requirements, and optional features like user authentication and email verification.
+
+## How the Server Finds Its Config File
+
+The server reads its configuration from `config/config.xml` relative to its working directory by default. This path is defined in `Main.java`:
+
+```java
+private static final String defaultConfigPath = Paths.get("config", "config.xml").toString();
+```
+
+To use a different path, pass the JVM property at startup:
+
+```bash
+java -Dxmage.config.path=config/otherconfig.xml -jar mage-server.jar
+```
+
+When using the XMage Launcher, you can set this property under **Settings → Java → Server java options**.
+
+## Quick-Start Steps
+
+<Steps>
+  <Step title="Install Java">
+    Ensure Java 8 or later is installed on the machine that will run the server. See [System Requirements](/installation/requirements) for platform-specific notes.
+  </Step>
+
+  <Step title="Extract XMage">
+    Unpack the XMage archive from [http://xmage.today/](http://xmage.today/) to a folder the server process can write to.
+  </Step>
+
+  <Step title="Edit config.xml">
+    Open `config/config.xml` and set `serverAddress` to your machine's IP address or domain name (use `0.0.0.0` to bind to all interfaces). Update `port` and `secondaryBindPort` if the defaults conflict with other services.
+  </Step>
+
+  <Step title="Open Firewall Ports">
+    Allow inbound TCP traffic on both configured ports (default `17171` and `17179`) from the firewall on the server machine and, for public servers, from your router/NAT device as well.
+
+    ```bash
+    # Example — UFW (Linux)
+    sudo ufw allow 17171/tcp
+    sudo ufw allow 17179/tcp
+    ```
+
+    ```powershell
+    # Example — Windows Firewall (PowerShell, run as Administrator)
+    New-NetFirewallRule -DisplayName "XMage Primary"   -Direction Inbound -Protocol TCP -LocalPort 17171 -Action Allow
+    New-NetFirewallRule -DisplayName "XMage Secondary" -Direction Inbound -Protocol TCP -LocalPort 17179 -Action Allow
+    ```
+  </Step>
+
+  <Step title="Start the Server">
+    Use the XMage Launcher (**Start Server** button) or run the server JAR directly:
+
+    ```bash
+    java -Xmx1G -jar mage-server-*.jar
+    ```
+
+    The log will confirm the listening address:
+
+    ```
+    Started MAGE server - listening on socket://0.0.0.0:17171
+    ```
+  </Step>
+
+  <Step title="Connect a Client">
+    From the XMage client connection dialog, enter your server's IP or hostname and port `17171`. See [Client Setup](/installation/client-setup) for client installation instructions.
+  </Step>
+</Steps>
+
+## Complete config.xml `<server>` Reference
+
+Below is the full default `<server>` element extracted from `Mage.Server/config/config.xml`, followed by a detailed description of every attribute.
+
+```xml
+<server serverAddress="0.0.0.0"
+        serverName="mage-server"
+        port="17171"
+        secondaryBindPort="17179"
+        backlogSize="200"
+        numAcceptThreads="2"
+        maxPoolSize="300"
+        leasePeriod="5000"
+        socketWriteTimeout="10000"
+        maxGameThreads="10"
+        maxSecondsIdle="300"
+        minUserNameLength="3"
+        maxUserNameLength="14"
+        invalidUserNamePattern="[^a-z0-9_]"
+        minPasswordLength="8"
+        maxPasswordLength="100"
+        maxAiOpponents="15"
+        saveGameActivated="false"
+        authenticationActivated="false"
+        googleAccount=""
+        mailgunApiKey=""
+        mailgunDomain=""
+        mailSmtpHost=""
+        mailSmtpPort=""
+        mailUser=""
+        mailPassword=""
+        mailFromAddress=""
+/>
+```
+
+### Network Settings
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `serverAddress` | `0.0.0.0` | IP address or domain the server binds to. Use `0.0.0.0` to listen on all interfaces. For public servers, set this to the public IP or domain that clients can reach (e.g. `xmage.mydomain.com`). |
+| `serverName` | `mage-server` | Display name shown to connecting clients. |
+| `port` | `17171` | Primary TCP port for client connections. |
+| `secondaryBindPort` | `17179` | Secondary (callback) port. Set to `-1` to let the OS choose an ephemeral port — avoid `-1` behind NAT. |
+| `backlogSize` | `200` | Maximum number of pending (unaccepted) incoming connections. Further requests are rejected when the queue is full. JBoss default is `200`. |
+| `numAcceptThreads` | `2` | Number of threads listening on the primary `ServerSocket`. JBoss default is `1`; `2` is a reasonable starting value. |
+| `maxPoolSize` | `300` | Maximum number of active server worker threads at any given time. JBoss default is `300`. |
+| `leasePeriod` | `5000` | Interval in **milliseconds** at which the server sends lease pings to detect dead clients. A value greater than `0` enables server-side connection failure detection. |
+| `socketWriteTimeout` | `10000` | Timeout in **milliseconds** for socket write operations. Writes that do not complete within this window are aborted. |
+
+<Note>
+  **`maxPoolSize` sizing for active public servers:** each connected client can consume multiple worker threads simultaneously (one per in-flight request). As a rule of thumb, set `maxPoolSize` to approximately `max_concurrent_users × 20`. For example, a server expecting up to 50 simultaneous users should use `maxPoolSize="1000"`. If `maxPoolSize` is reached, new clients will stall in the connection dialog until a thread becomes free or the backlog overflows.
+</Note>
+
+### Game Settings
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `maxGameThreads` | `10` | Maximum number of games that can run simultaneously on the server. Each game occupies one thread. |
+| `maxSecondsIdle` | `300` | Seconds of player inactivity before the server auto-concedes the idle player's game. |
+| `maxAiOpponents` | `15` | Maximum number of AI (computer) opponents that can be active across all games at once. Draft bots are unlimited and not counted here. |
+| `saveGameActivated` | `false` | Enable game save and replay functionality. **Note:** this feature is not fully stable yet. |
+
+### User Name & Password Constraints
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `minUserNameLength` | `3` | Minimum character length for a valid username. |
+| `maxUserNameLength` | `14` | Maximum character length for a valid username. |
+| `invalidUserNamePattern` | `[^a-z0-9_]` | Java regex pattern matching **invalid** characters in a username. The default allows only lowercase letters, digits, and underscores. |
+| `minPasswordLength` | `8` | Minimum password length when authentication is enabled. |
+| `maxPasswordLength` | `100` | Maximum password length when authentication is enabled. |
+
+### Authentication
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `authenticationActivated` | `false` | When `false`, anyone can connect with any username without registering. Set to `true` to require users to register an account (and verify via email if mail is configured). |
+
+When `authenticationActivated` is `true`, a mail backend must be configured so that the server can send account-verification emails. XMage supports two backends:
+
+**Option A — Mailgun (recommended for public servers)**
+
+Leave `mailUser` empty and supply your Mailgun credentials:
+
+```xml
+mailgunApiKey="key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+mailgunDomain="mg.yourdomain.com"
+mailFromAddress="xmage@yourdomain.com"
+```
+
+**Option B — Native SMTP**
+
+Provide SMTP credentials (any provider works — Gmail, SendGrid, Postfix, etc.):
+
+```xml
+mailSmtpHost="smtp.gmail.com"
+mailSmtpPort="587"
+mailUser="youruser@gmail.com"
+mailPassword="yourapppassword"
+mailFromAddress="youruser@gmail.com"
+```
+
+<Note>
+  The server chooses between Mailgun and SMTP by checking whether `mailUser` is empty. If `mailUser` is blank, Mailgun is used; otherwise, the SMTP settings take precedence.
+</Note>
+
+## Example: Minimal Public Server Config
+
+The snippet below shows a production-ready configuration for a small public server expecting up to 20 simultaneous users, with authentication enabled via Mailgun:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="../Config.xsd">
+
+    <server serverAddress="203.0.113.42"
+            serverName="My XMage Server"
+            port="17171"
+            secondaryBindPort="17179"
+            backlogSize="200"
+            numAcceptThreads="2"
+            maxPoolSize="400"
+            leasePeriod="5000"
+            socketWriteTimeout="10000"
+            maxGameThreads="10"
+            maxSecondsIdle="300"
+            minUserNameLength="3"
+            maxUserNameLength="14"
+            invalidUserNamePattern="[^a-z0-9_]"
+            minPasswordLength="8"
+            maxPasswordLength="100"
+            maxAiOpponents="15"
+            saveGameActivated="false"
+            authenticationActivated="true"
+            googleAccount=""
+            mailgunApiKey="key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            mailgunDomain="mg.yourdomain.com"
+            mailSmtpHost=""
+            mailSmtpPort=""
+            mailUser=""
+            mailPassword=""
+            mailFromAddress="xmage@yourdomain.com"
+    />
+
+    <!-- playerTypes, gameTypes, tournamentTypes, etc. remain unchanged -->
+</config>
+```
+
+Replace `203.0.113.42` with your server's actual public IP or hostname.
+
+## NAT and Port Forwarding
+
+For clients on the internet to reach a server behind a home router:
+
+1. Assign a static local IP to the server machine (or use a DHCP reservation).
+2. In your router's port-forwarding settings, forward external TCP `17171` → server local IP `17171`, and TCP `17179` → server local IP `17179`.
+3. Set `serverAddress` in `config.xml` to your **public** IP or dynamic-DNS hostname (e.g. `myhome.ddns.net`), **not** `0.0.0.0` — clients need to be told the address they connect back to.
+
+## Test Mode
+
+For development and testing, start the server with the `xmage.testMode` JVM property:
+
+```bash
+java -Dxmage.testMode=true -jar mage-server-*.jar
+```
+
+Or add `-Dxmage.testMode=true` to **Settings → Java → Server java options** in the launcher.
+
+Test mode enables:
+
+- Fast-game buttons and cheat commands in the client
+- No deck validation
+- Simplified registration and login (no password check)
+- No draft click-protection timeouts
+- No disconnection on IDE debugger pauses (pings disabled)
+- Debug main menu in the client when launched with `-debug`
+
+<Warning>
+  Never enable test mode on a production or public server. It bypasses authentication, deck validation, and other integrity checks.
+</Warning>

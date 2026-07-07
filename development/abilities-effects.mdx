@@ -1,0 +1,420 @@
+---
+title: "Abilities and Effects in XMage: A Developer Reference"
+sidebarTitle: "Abilities & Effects"
+description: "Reference guide for XMage ability types (activated, triggered, static, loyalty), effect types, and how to wire them to card implementations."
+---
+
+Every mechanical behavior in XMage — from tapping a land to produce mana, to a triggered ability firing when a creature attacks, to a planeswalker loyalty activation — is modelled as an `Ability` paired with one or more `Effect` objects. Understanding which abstract base class to extend, and when to reach for a pre-built class in `mage.abilities.common`, is the key skill for implementing new cards efficiently. This page covers all the ability types available in the `mage.abilities` package and the effect categories in `mage.abilities.effects`, with working code examples drawn directly from the XMage source.
+
+## The `Ability` Interface
+
+All abilities implement `mage.abilities.Ability`, which extends both `Controllable` and `Serializable`. The interface exposes the core components of any ability:
+
+- **`AbilityType getAbilityType()`** — returns the enum constant identifying this ability's category (e.g. `AbilityType.ACTIVATED_NONMANA`, `AbilityType.TRIGGERED_NONMANA`, `AbilityType.STATIC`).
+- **`Costs<Cost> getCosts()`** / **`ManaCosts<ManaCost> getManaCosts()`** — the costs that must be paid to activate or use the ability.
+- **`Effects getEffects()`** — the list of effects that resolve when the ability resolves.
+- **`Targets getTargets()`** — targeting information.
+- **`UUID getSourceId()`** / **`UUID getControllerId()`** — the permanent or spell this ability belongs to, and who controls it.
+
+The concrete base for nearly every ability is `AbilityImpl`, which provides implementations for all of these. You will rarely extend `AbilityImpl` directly — instead extend one of the specialised subclasses described below.
+
+---
+
+## Ability Types
+
+### `ActivatedAbility` / `ActivatedAbilityImpl`
+
+Activated abilities have an explicit cost that the controller chooses to pay. They go on the stack. The abstract base `ActivatedAbilityImpl` holds the `timing` (`TimingRule.INSTANT` by default) and `maxActivationsPerTurn` / `maxActivationsPerGame` limits.
+
+For straightforward cases, use `SimpleActivatedAbility` from `mage.abilities.common`:
+
+```java
+// SimpleActivatedAbility(Zone zone, Effect effect, Cost cost)
+// Zone.BATTLEFIELD means this ability is only active while the permanent is on the battlefield.
+
+// {3}: Untap this permanent.
+this.addAbility(new SimpleActivatedAbility(
+        new UntapSourceEffect(),
+        new GenericManaCost(3)));
+
+// {T}: Draw a card.
+this.addAbility(new SimpleActivatedAbility(
+        new DrawCardSourceControllerEffect(1),
+        new TapSourceCost()));
+```
+
+When you need multiple costs, chain `addCost()`:
+
+```java
+Ability ability = new SimpleActivatedAbility(
+        new DamageTargetEffect(2),
+        new TapSourceCost());
+ability.addCost(new ManaCostsImpl<>("{R}"));
+ability.addTarget(new TargetAnyTarget());
+this.addAbility(ability);
+```
+
+<Tip>
+`mage.abilities.mana.SimpleManaAbility` is the preferred class for mana-producing activated abilities. It handles the mana pool correctly and is recognised by the engine as a mana ability (which means it does not use the stack).
+</Tip>
+
+---
+
+### `TriggeredAbility` / `TriggeredAbilityImpl`
+
+Triggered abilities watch for `GameEvent`s and fire automatically when their condition is met. You implement two methods:
+
+- **`checkEventType(GameEvent event, Game game)`** — a fast pre-check that returns `true` only for the event type(s) this ability cares about.
+- **`checkTrigger(GameEvent event, Game game)`** — the full check; returns `true` when the ability should actually trigger.
+
+The `TriggeredAbilityImpl` constructor signature is:
+
+```java
+protected TriggeredAbilityImpl(Zone zone, Effect effect, boolean optional)
+```
+
+Setting `optional = true` means the controller will be asked "Do you want to use this ability?" when it triggers.
+
+`mage.abilities.common` provides many ready-made triggered abilities. `EntersBattlefieldTriggeredAbility` is one of the most common:
+
+```java
+// When this creature enters, draw a card.
+this.addAbility(new EntersBattlefieldTriggeredAbility(
+        new DrawCardSourceControllerEffect(1)));
+```
+
+When a custom triggered ability is needed, write it as a package-private inner class in the same file as the card. The Goblin Guide pattern (from `mage/cards/g/GoblinGuide.java`) is the canonical template:
+
+```java
+class GoblinGuideTriggeredAbility extends TriggeredAbilityImpl {
+
+    public GoblinGuideTriggeredAbility(Effect effect, boolean optional) {
+        super(Zone.BATTLEFIELD, effect, optional);
+    }
+
+    private GoblinGuideTriggeredAbility(final GoblinGuideTriggeredAbility ability) {
+        super(ability);
+    }
+
+    @Override
+    public boolean checkEventType(GameEvent event, Game game) {
+        return event.getType() == GameEvent.EventType.ATTACKER_DECLARED;
+    }
+
+    @Override
+    public boolean checkTrigger(GameEvent event, Game game) {
+        if (event.getSourceId().equals(this.getSourceId())) {
+            UUID defenderId = game.getCombat()
+                    .getDefendingPlayerId(getSourceId(), game);
+            if (defenderId != null) {
+                for (Effect effect : this.getEffects()) {
+                    effect.setTargetPointer(new FixedTarget(defenderId, game));
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public String getRule() {
+        return "Whenever {this} attacks, defending player reveals the top card "
+                + "of their library. If it's a land card, that player puts it "
+                + "into their hand.";
+    }
+
+    @Override
+    public GoblinGuideTriggeredAbility copy() {
+        return new GoblinGuideTriggeredAbility(this);
+    }
+}
+```
+
+---
+
+### `StaticAbility`
+
+Static abilities are always in effect while the permanent is on the battlefield (or, for some, in other zones). They do not use the stack. `StaticAbility` extends `AbilityImpl` with `AbilityType.STATIC` and zone `Zone.BATTLEFIELD` by default.
+
+Use `SimpleStaticAbility` for the common case:
+
+```java
+// SimpleStaticAbility(Effect effect)           — Zone.BATTLEFIELD
+// SimpleStaticAbility(Zone zone, Effect effect) — explicit zone
+
+// This permanent doesn't untap during your untap step.
+this.addAbility(new SimpleStaticAbility(
+        new DontUntapInControllersUntapStepSourceEffect()));
+
+// Other creatures you control get +1/+1.
+this.addAbility(new SimpleStaticAbility(
+        new BoostControlledEffect(1, 1, Duration.WhileOnBattlefield,
+                StaticFilters.FILTER_PERMANENT_CREATURES, true)));
+```
+
+`SimpleEvasionAbility` (also in `mage.abilities.common`) is the preferred wrapper for evasion rules like Menace, Fear, and Intimidate, since the engine treats evasion abilities differently from other static effects when calculating blocks:
+
+```java
+// Can't be blocked except by two or more creatures (Menace).
+this.addAbility(new SimpleEvasionAbility(
+        new CantBeBlockedByOneEffect()));
+```
+
+---
+
+### `SpellAbility`
+
+`SpellAbility` is the default ability that lets a card be cast from hand. `CardImpl` creates it automatically in its constructor — you do not instantiate it yourself. You access it via `this.getSpellAbility()` to attach effects and targets for instants and sorceries:
+
+```java
+// The spell deals 3 damage to any target.
+this.getSpellAbility().addEffect(new DamageTargetEffect(3));
+this.getSpellAbility().addTarget(new TargetAnyTarget());
+```
+
+---
+
+### `LoyaltyAbility`
+
+Planeswalker loyalty abilities extend `ActivatedAbilityImpl` with `TimingRule.SORCERY` and a `PayLoyaltyCost`. Pass a positive integer for +N abilities and a negative integer for −N abilities:
+
+```java
+// +1: Put a +1/+1 counter on up to one target creature.
+Ability plusOne = new LoyaltyAbility(
+        new AddCountersTargetEffect(CounterType.P1P1.createInstance()), 1);
+plusOne.addTarget(new TargetCreaturePermanent(0, 1));
+this.addAbility(plusOne);
+
+// -3: Target creature gains flying and double strike until end of turn.
+Ability minusThree = new LoyaltyAbility(
+        new GainAbilityTargetEffect(FlyingAbility.getInstance(),
+                Duration.EndOfTurn), -3);
+minusThree.addEffect(new GainAbilityTargetEffect(
+        DoubleStrikeAbility.getInstance(), Duration.EndOfTurn));
+minusThree.addTarget(new TargetCreaturePermanent());
+this.addAbility(minusThree);
+
+// -8: Create X 2/2 white Cat tokens, where X is your life total.
+this.addAbility(new LoyaltyAbility(
+        new CreateTokenEffect(new CatToken(), ControllerLifeCount.instance), -8));
+```
+
+---
+
+### `DelayedTriggeredAbility`
+
+A `DelayedTriggeredAbility` is created at resolution time and placed into the game state to fire on a future event. Use it when an effect says something like "at the beginning of the next end step, do X". You create the ability inside a `OneShotEffect` and register it with the game:
+
+```java
+// Inside an OneShotEffect.apply():
+DelayedTriggeredAbility delayedAbility = new AtTheBeginOfNextEndStepDelayedTriggeredAbility(
+        new DrawCardSourceControllerEffect(1));
+game.addDelayedTriggeredAbility(delayedAbility, source);
+```
+
+Pre-built delayed ability wrappers for common timing windows (end step, next upkeep, next combat) live in `mage.abilities.common`.
+
+---
+
+## Effect Types
+
+Effects are attached to abilities and carry out the mechanical action when the ability resolves. All effects live in the `mage.abilities.effects` package (and its `common/` subdirectory).
+
+### `OneShotEffect`
+
+Fires once and is immediately discarded. Deals damage, draws cards, destroys permanents, creates tokens, etc. You implement:
+
+```java
+@Override
+public boolean apply(Game game, Ability source) {
+    // perform the action, return true on success
+}
+```
+
+```java
+// Example: deal 3 damage to any target
+public class DamageTargetEffect extends OneShotEffect {
+
+    private final int damage;
+
+    public DamageTargetEffect(int damage) {
+        super(Outcome.Damage);
+        this.damage = damage;
+        staticText = "{this} deals " + damage + " damage to any target";
+    }
+
+    @Override
+    public boolean apply(Game game, Ability source) {
+        Permanent permanent = game.getPermanent(
+                source.getFirstTarget());
+        if (permanent != null) {
+            permanent.damage(damage, source.getSourceId(), source, game);
+            return true;
+        }
+        Player player = game.getPlayer(source.getFirstTarget());
+        if (player != null) {
+            player.damage(damage, source.getSourceId(), source, game);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public DamageTargetEffect copy() {
+        return new DamageTargetEffect(this);
+    }
+}
+```
+
+### `ContinuousEffect` / `ContinuousEffectImpl`
+
+Persists over time (often until end of turn, or while a condition is met). The engine re-evaluates these continuously. Subtypes include `ContinuousEffect` for stat modifications, `ContinuousRuleModifyingEffect` for rule changes, and `ReplacementEffect` for event replacement.
+
+```java
+// Give a creature +2/+2 until end of turn — a ContinuousEffectImpl
+this.addAbility(new SimpleActivatedAbility(
+        new BoostSourceEffect(2, 2, Duration.EndOfTurn),
+        new ManaCostsImpl<>("{2}")));
+
+// All creatures you control gain flying until end of turn
+this.getSpellAbility().addEffect(
+        new GainAbilityControlledEffect(
+                FlyingAbility.getInstance(),
+                Duration.EndOfTurn,
+                StaticFilters.FILTER_PERMANENT_CREATURES));
+```
+
+### `ReplacementEffect`
+
+Replaces a game event with a different one before it happens. For example, replacing "draw a card" with "draw two cards" or replacing "this permanent would be destroyed" with "exile it instead". Implement `ReplacementEffect` and override `replaces(GameEvent, Ability, Game)` and `apply(GameEvent, Ability, Game)`.
+
+### `PreventionEffect`
+
+A specialised replacement effect that prevents damage. Implement `PreventionEffect` and override `applies(GameEvent, Ability, Game)` to select which damage events to intercept, then `apply(GameEvent, Ability, Game)` to reduce or zero out the damage value.
+
+### `AsThoughEffect`
+
+Allows something to happen "as though" a condition were true — for example, casting cards from exile as though they were in your hand, or activating abilities as though it were your turn. Extend `AsThoughEffectImpl` and specify an `AsThoughEffectType`.
+
+---
+
+## The `mage.abilities.common` Library
+
+<Tip>
+Before writing a custom ability or effect class, search `mage.abilities.common` and `mage.abilities.effects.common`. These two packages contain hundreds of reusable implementations covering nearly every standard Magic mechanic. Using them keeps card code short, consistent, and easier to maintain. Common examples include `EntersBattlefieldTriggeredAbility`, `AttacksTriggeredAbility`, `DiesSourceTriggeredAbility`, `SimpleStaticAbility`, `SimpleActivatedAbility`, `DrawCardSourceControllerEffect`, `DamageTargetEffect`, `CreateTokenEffect`, `AddCountersTargetEffect`, and `GainAbilityControlledEffect`.
+</Tip>
+
+<CodeGroup>
+
+```java Activated ability (SimpleActivatedAbility)
+import mage.abilities.common.SimpleActivatedAbility;
+import mage.abilities.costs.common.TapSourceCost;
+import mage.abilities.costs.mana.GenericManaCost;
+import mage.abilities.effects.common.DrawCardSourceControllerEffect;
+
+// {2}, {T}: Draw a card.
+Ability drawAbility = new SimpleActivatedAbility(
+        new DrawCardSourceControllerEffect(1),
+        new TapSourceCost());
+drawAbility.addCost(new GenericManaCost(2));
+this.addAbility(drawAbility);
+```
+
+```java Triggered ability (EntersBattlefieldTriggeredAbility)
+import mage.abilities.common.EntersBattlefieldTriggeredAbility;
+import mage.abilities.effects.common.DrawCardSourceControllerEffect;
+
+// When this creature enters, draw a card.
+this.addAbility(new EntersBattlefieldTriggeredAbility(
+        new DrawCardSourceControllerEffect(1)));
+```
+
+```java Triggered ability (AttacksTriggeredAbility)
+import mage.abilities.common.AttacksTriggeredAbility;
+import mage.abilities.effects.common.continuous.BoostSourceEffect;
+import mage.constants.Duration;
+
+// Whenever this creature attacks, it gets +2/+0 until end of turn.
+this.addAbility(new AttacksTriggeredAbility(
+        new BoostSourceEffect(2, 0, Duration.EndOfTurn), false));
+```
+
+```java Static ability (SimpleStaticAbility)
+import mage.abilities.common.SimpleStaticAbility;
+import mage.abilities.effects.common.continuous.GainAbilityControlledEffect;
+import mage.abilities.keyword.VigilanceAbility;
+import mage.constants.Duration;
+import mage.filter.StaticFilters;
+
+// Other creatures you control have vigilance.
+this.addAbility(new SimpleStaticAbility(
+        new GainAbilityControlledEffect(
+                VigilanceAbility.getInstance(),
+                Duration.WhileOnBattlefield,
+                StaticFilters.FILTER_PERMANENT_CREATURES,
+                true)));  // 'true' = exclude the source
+```
+
+```java Evasion ability (SimpleEvasionAbility)
+import mage.abilities.common.SimpleEvasionAbility;
+import mage.abilities.effects.common.combat.CantBeBlockedByOneEffect;
+
+// Menace (this creature can't be blocked except by two or more creatures)
+this.addAbility(new SimpleEvasionAbility(new CantBeBlockedByOneEffect()));
+```
+
+```java Loyalty ability (LoyaltyAbility)
+import mage.abilities.LoyaltyAbility;
+import mage.abilities.effects.common.counter.AddCountersTargetEffect;
+import mage.counters.CounterType;
+import mage.target.common.TargetCreaturePermanent;
+
+// +1: Put a +1/+1 counter on up to one target creature.
+Ability plusOne = new LoyaltyAbility(
+        new AddCountersTargetEffect(CounterType.P1P1.createInstance()), 1);
+plusOne.addTarget(new TargetCreaturePermanent(0, 1));
+this.addAbility(plusOne);
+```
+
+</CodeGroup>
+
+---
+
+## Wiring Effects to Custom Ability Classes
+
+When no pre-built class fits and you need a custom triggered ability, the minimal implementation requires:
+
+1. A class extending `TriggeredAbilityImpl` (or `ActivatedAbilityImpl` / `StaticAbility`) with its own copy constructor and `copy()`.
+2. An effect class extending `OneShotEffect` or `ContinuousEffectImpl` with `apply()` and `copy()`.
+
+Both the ability and its effects must implement `copy()` returning a `new MyClass(this)` — this is required for correct game-state serialisation and AI cloning.
+
+```java
+// Custom OneShotEffect skeleton
+class MyEffect extends OneShotEffect {
+
+    MyEffect() {
+        super(Outcome.Benefit);
+        staticText = "draw a card"; // shown in the tooltip
+    }
+
+    private MyEffect(final MyEffect effect) {
+        super(effect);
+    }
+
+    @Override
+    public MyEffect copy() {
+        return new MyEffect(this);
+    }
+
+    @Override
+    public boolean apply(Game game, Ability source) {
+        Player controller = game.getPlayer(source.getControllerId());
+        if (controller != null) {
+            controller.drawCards(1, source, game);
+            return true;
+        }
+        return false;
+    }
+}
+```

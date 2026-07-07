@@ -1,0 +1,182 @@
+---
+title: "XMage Troubleshooting: Common Problems and Fixes"
+sidebarTitle: "Common Issues"
+description: "Diagnose and fix the most common XMage issues: startup freezes, image download failures, JVM errors, and platform-specific rendering problems."
+---
+
+XMage runs on a wide range of operating systems and Java runtimes, which means the same symptom can have different root causes depending on your setup. This page collects the most frequently reported problems and their known fixes — work through the accordion that matches your situation before opening a new issue.
+
+<Note>
+  Many of these issues have detailed discussion threads on the GitHub issues page. You can browse all officially tagged problems at the [FAQ issues list](https://github.com/magefree/mage/issues?q=is%3Aissue+label%3AFAQ+) for deeper context and community-contributed solutions.
+</Note>
+
+## Version Mismatch
+
+Before diving into platform-specific issues, confirm that your **client and server are running the exact same version**. XMage does not support cross-version connections. If you connect to a public server and see an immediate disconnect, a cryptic error, or missing cards, a version mismatch is almost always the cause.
+
+- Check the version displayed in the launcher title bar.
+- Check the version listed on the [public servers page](http://xmage.today/servers/).
+- Re-download the latest launcher from [xmage.today](http://xmage.today/) if they differ.
+
+## Connection Refused
+
+If the client reports "connection refused" or times out when joining a server:
+
+1. Confirm the server is actually running (check [server status](http://xmage.today/servers/)).
+2. XMage uses ports **17171** (game traffic) and **17179** (HTTPS/status). Make sure your firewall and any router NAT rules allow outbound connections on both ports.
+3. If you are self-hosting, ensure those ports are open for inbound traffic and that the server config points to the correct bind address.
+4. Antivirus software or a VPN can silently block these ports — try temporarily disabling them to isolate the problem.
+
+## All-Platform Issues
+
+<AccordionGroup>
+  <Accordion title="Program freezes on startup (white, blue, or black screen)">
+    The launcher or client window opens but never finishes loading — you see a solid white, blue, or black rectangle with no UI.
+
+    **Common causes and fixes:**
+
+    - **Outdated or incompatible Java version.** XMage requires Java 8 or later. Download the latest JRE from [java.com](http://java.com/) and make sure the launcher is pointed at it under `Settings > Java`.
+    - **Graphics driver issue.** GPU-accelerated rendering can deadlock on some driver versions. Add `-Dsun.java2d.d3d=false` (Windows) or `-Dsun.java2d.opengl=false` (Linux/macOS) to the *Client java options* field in `Settings > Java` to force software rendering.
+    - **Corrupted installation.** Delete the XMage folder entirely and re-download a fresh copy from [xmage.today](http://xmage.today/).
+
+    Full community discussion and additional workarounds: [GitHub issue #4461](https://github.com/magefree/mage/issues/4461#issuecomment-361108597).
+  </Accordion>
+
+  <Accordion title="Can't download card images, or download stops partway through">
+    Card image downloads fail immediately or stall after a few hundred cards.
+
+    **What to know:**
+
+    - XMage fetches card images from third-party image sources. Those sources can be rate-limited, temporarily offline, or geo-blocked.
+    - Try switching the image source in `Settings > Images` to an alternative provider and restart the download.
+    - If all sources fail, try again later — the most common cause is a temporary outage on the provider's side.
+    - A slow or unstable internet connection can also cause the downloader to stall. Ensure you have a stable connection and retry; the downloader will pick up from where it left off.
+
+    Community context and alternative mirror links: [Reddit thread](https://www.reddit.com/r/XMage/comments/agmcjf/new_xmage_release_with_ravnica_allegiance_rna/).
+  </Accordion>
+
+  <Accordion title="Can't run client: 'could not open ...jvm.cfg'">
+    Launching the client produces an error similar to:
+
+    ```
+    Error: could not open `C:\...\jvm.cfg'
+    ```
+
+    **Cause:** The launcher is resolving an incorrect or stale Java path — often pointing at a Java installation that has been moved, updated, or uninstalled.
+
+    **Fix:**
+    1. Open the XMage Launcher.
+    2. Go to `Settings > Java`.
+    3. Update the *Java path* field to point at the `java.exe` (Windows) or `java` binary of your current JRE installation.
+    4. If you are unsure of the path, run `where java` (Windows) or `which java` (Linux/macOS) in a terminal.
+
+    See [GitHub issue #1272](https://github.com/magefree/mage/issues/1272#issuecomment-529789018) for further details.
+  </Accordion>
+
+  <Accordion title="No text, or buttons are too small in the launcher">
+    The launcher UI renders with tiny buttons, missing labels, or unreadably small text — usually on a high-DPI or 4K display.
+
+    **Cause:** Java's HiDPI scaling support is not auto-detecting your display scaling factor correctly.
+
+    **Fix:** Add the following flag to the *Launcher java options* field in `Settings > Java`:
+
+    ```bash
+    -Dsun.java2d.uiScale=2
+    ```
+
+    Adjust the value (`1.5`, `2`, etc.) to match your OS display scaling setting. On Windows this is found in `Settings > Display > Scale`.
+
+    Full discussion: [GitHub issue #4126](https://github.com/magefree/mage/issues/4126).
+  </Accordion>
+</AccordionGroup>
+
+## Windows
+
+<AccordionGroup>
+  <Accordion title="Ugly cards, distorted buttons, or GUI drawing artifacts">
+    Card images look smeared, button borders are missing, or other UI elements are visually corrupted. This is caused by Java's Direct3D hardware acceleration producing incorrect output on certain GPU/driver combinations.
+
+    **Fix:** Disable Direct3D acceleration by adding this flag to *Client java options* in `Settings > Java`:
+
+    ```bash
+    -Dsun.java2d.d3d=false
+    ```
+
+    This forces Java 2D to fall back to software rendering, which resolves the artifacts at a small performance cost.
+
+    Full discussion: [GitHub issue #4626](https://github.com/magefree/mage/issues/4626#issuecomment-374640070).
+  </Accordion>
+
+  <Accordion title="Pixelated images, icons, and text (HiDPI / high-resolution displays)">
+    Everything in the client looks blurry or pixelated — card art, icons, and text all appear scaled up rather than rendering at native resolution.
+
+    **Cause:** Windows display scaling (e.g. 150 % or 200 %) is applied to the Java application without HiDPI-aware rendering, resulting in an upscaled low-resolution image.
+
+    **Fix:** Use a Java runtime with proper HiDPI support and/or add scaling flags. See the detailed steps in [GitHub issue #12768](https://github.com/magefree/mage/issues/12768#issuecomment-2347125602) for the recommended JDK version and flag combination.
+  </Accordion>
+</AccordionGroup>
+
+## macOS
+
+<AccordionGroup>
+  <Accordion title="Can't open the launcher — macOS blocks it">
+    Double-clicking the launcher produces "XMage can't be opened because it is from an unidentified developer" or the file simply does nothing.
+
+    **Cause:** macOS Gatekeeper quarantines applications that are not signed with an Apple Developer certificate.
+
+    **Fix — Option A (GUI):** Right-click (or Control-click) the launcher file and choose **Open**. macOS will ask for confirmation; click **Open** to run it once and permanently whitelist it.
+
+    **Fix — Option B (Terminal):** Remove the quarantine extended attribute entirely:
+
+    ```bash
+    xattr -d com.apple.quarantine /path/to/XMageLauncher
+    ```
+
+    Replace `/path/to/XMageLauncher` with the actual path to the launcher file.
+
+    Community reference: [Reddit comment](https://www.reddit.com/r/XMage/comments/1u2ezx6/comment/or38wjd/).
+  </Accordion>
+
+  <Accordion title="Can't run XMage on Apple Silicon (M1 / M2)">
+    The client crashes immediately or the JVM exits with an unsupported architecture error on Macs with Apple M1 or M2 chips.
+
+    **Cause:** XMage requires a Java runtime compiled for the `aarch64` (ARM64) architecture. The standard x86-64 JRE will not work — even under Rosetta 2 emulation the JVM may fail.
+
+    **Fix:** Download and install an ARM-native JDK, such as:
+    - [Azul Zulu for macOS ARM](https://www.azul.com/downloads/?os=macos&architecture=arm-64-bit&package=jdk)
+    - [Eclipse Temurin (Adoptium) macOS aarch64](https://adoptium.net/)
+
+    Then point the XMage Launcher at the new JRE under `Settings > Java`.
+
+    Full discussion: [GitHub issue #8406](https://github.com/magefree/mage/issues/8406#issuecomment-1011720728).
+  </Accordion>
+
+  <Accordion title="Client freezes in GUI (connect dialog, new match dialog)">
+    After the client loads, certain dialogs — particularly the server connect dialog or the new match creation window — cause the UI to freeze or become completely unresponsive.
+
+    **Cause:** A known Java/macOS rendering thread interaction issue on some macOS versions.
+
+    **Fix:** See the workarounds documented in [GitHub issue #4920](https://github.com/magefree/mage/issues/4920#issuecomment-517944308), which include specific JVM flags and macOS version notes contributed by the community.
+  </Accordion>
+</AccordionGroup>
+
+## Linux
+
+<AccordionGroup>
+  <Accordion title="Running on non-standard OS or hardware (e.g. Raspberry Pi)">
+    XMage fails to start or behaves erratically on non-x86 Linux hardware such as Raspberry Pi, ARM single-board computers, or unusual distributions.
+
+    **Key considerations:**
+    - You need an ARM-compatible JRE (e.g. Azul Zulu ARM, Eclipse Temurin).
+    - Some lightweight desktop environments or minimal Linux builds lack required libraries (e.g. GTK, libXext).
+    - The launcher may need to be run directly via `java -jar` rather than through a shell script if execute permissions are lost.
+
+    Community guide for Raspberry Pi and similar hardware: [GitHub issue #11611](https://github.com/magefree/mage/issues/11611#issuecomment-1879385151).
+  </Accordion>
+
+  <Accordion title="Ugly GUI and drawing artifacts on Linux">
+    The client renders with visual glitches, missing borders, or generally poor-quality UI elements on Linux desktops.
+
+    **Fix:** This is typically resolved by switching the Java 2D rendering pipeline. See the specific flags and configuration steps in [GitHub issue #11611](https://github.com/magefree/mage/issues/11611#issuecomment-1879396921), and refer to the [Performance page](/troubleshooting/performance) for the `XRender` and `OpenGL` flags that can also resolve rendering artifacts.
+  </Accordion>
+</AccordionGroup>

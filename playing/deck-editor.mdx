@@ -1,0 +1,140 @@
+---
+title: "Build and Manage Decks in the XMage Deck Editor"
+sidebarTitle: "Deck Editor"
+description: "Use the XMage deck editor to build, import, export, and validate decks across Standard, Commander, Draft, and all other supported formats."
+---
+
+The XMage deck editor is a full-featured deckbuilding workspace embedded directly in the client. It gives you access to the entire card database — over 31,000 unique cards and 91,000+ reprints — and lets you build, refine, validate, import, and export decks without leaving the application. The editor is used both for pre-game deckbuilding and during in-game draft and sideboarding phases, so the same interface covers every stage of play.
+
+## Opening the Deck Editor
+
+You can reach the deck editor from several places:
+
+- **Main menu bar → Deck Editor** — opens a standalone editor window at any time, even while other games are running.
+- **New Table dialog** — when you create or join a game that requires a deck, the editor opens inline so you can select or build one before confirming.
+- **Draft/Sealed phase** — the editor opens automatically after a draft or sealed pool is generated so you can build your limited deck.
+
+Multiple deck editor tabs can be open simultaneously; each tab shows the deck name in its title bar.
+
+## The Card Selector Panel
+
+The left side of the editor contains the **Card Selector** — a filterable, searchable browser of the full XMage card database. Filters update the card list in real time.
+
+### Search
+
+The search bar accepts card names, mana cost symbols (e.g. `{W}`, `{U}`, `{C}`), rules text, and card types. Use **quotes** for an exact-match search. Checkboxes beside the search bar let you restrict matching to:
+
+- **Names** — card name only
+- **Types** — type line (creature type, card type)
+- **Rules** — oracle text / rules box
+- **Unique** — collapse reprints to show only one copy per card name
+
+### Filter Toggles
+
+| Filter | Options |
+|---|---|
+| **Color** | White, Blue, Black, Red, Green, Colorless, Multicolor — click to toggle; Ctrl+click to solo |
+| **Type** | Land, Creature, Artifact, Enchantment, Instant, Sorcery, Planeswalker, Battle — click to toggle |
+| **Rarity** | Common, Uncommon, Rare, Mythic, Special — icon buttons in the toolbar |
+| **Expansion / Set** | A searchable set picker (the expansion search button) lets you filter by one or more sets |
+
+All active filters are combined (AND logic), so you can narrow down to, for example, blue uncommon instants from a specific set.
+
+## Building a Deck
+
+<Steps>
+  <Step title="Open the Deck Editor">
+    From the main menu, click **Deck Editor**. An untitled deck tab opens. The left panel shows the card database; the right panel shows your deck and sideboard.
+  </Step>
+  <Step title="Search and filter cards">
+    Type a card name or keyword in the search bar, or use the color, type, and rarity toggles to browse. The card count label updates as filters are applied.
+  </Step>
+  <Step title="Add cards to the main deck">
+    Double-click a card in the selector to add one copy to the main deck. Right-click for additional options (add multiple copies, add to sideboard). Drag-and-drop is also supported.
+  </Step>
+  <Step title="Build the sideboard">
+    Click the **Sideboard** area at the bottom-right of the deck panel and double-click cards from the selector to add them there. Most constructed formats allow up to 15 sideboard cards.
+  </Step>
+  <Step title="Select a deck format for validation">
+    In the **Legality** panel, choose a format (e.g. **Constructed – Standard**, **Variant Magic – Commander**). The validator immediately highlights illegal cards and reports deck-size violations.
+  </Step>
+  <Step title="Fix any issues and save">
+    Address any flagged cards, then click **Save** (or **File → Save Deck**) to write a `.dck` file to disk. Name your deck in the dialog that appears.
+  </Step>
+</Steps>
+
+## Format Validation
+
+The **Deck Legality** panel runs the same validators used by the server when you sit down at a table. Select any supported deck type from the dropdown, and the panel immediately shows:
+
+- ✅ Cards that are legal
+- ❌ Cards that are banned or not in the selected format's card pool
+- Deck size and sideboard size compliance (e.g. 100-card singleton for Commander, 60+ for Standard)
+- Color-identity violations (Commander formats)
+
+<Tip>
+  Always validate your deck against the correct format before clicking **Ready** at a table. The server will reject an illegal deck and return you to the deck selection screen, which can hold up other players waiting for the game to start.
+</Tip>
+
+## Importing Decks
+
+XMage supports two import methods:
+
+<Tabs>
+  <Tab title="Import from File">
+    Click the **Import** button (deck-in icon) in the deck editor toolbar, then choose **Import from file**. A file chooser opens that accepts:
+
+    - `.dck` — XMage's native deck format
+    - `.dck_info` — XMage deck format with additional metadata
+
+    Standard plain-text deck list files (one card per line, quantity first) are also accepted via the clipboard method below.
+  </Tab>
+  <Tab title="Import from Clipboard">
+    Copy a deck list in standard format from any external source (Moxfield, Archidekt, MTGO, Arena export, etc.), then click **Import → Import from clipboard** in the editor. XMage parses the list and matches each line to its internal card database.
+
+    Use **Import from clipboard (append)** to add cards to an existing deck rather than replacing it.
+
+    Example clipboard format:
+    ```
+    4 Lightning Bolt
+    4 Goblin Guide
+    4 Eidolon of the Great Revel
+    ...
+    Sideboard
+    3 Searing Blood
+    2 Skullcrack
+    ```
+  </Tab>
+</Tabs>
+
+## Exporting Decks
+
+The **Export** button (deck-out icon) offers two options:
+
+- **Export to file** — opens a save dialog. Choose from all formats registered in `DeckFormats`, including `.dck` (XMage native) and `.dck_info`. The client remembers the last export folder.
+- **Export to clipboard** — opens the `DeckExportClipboardDialog`, which shows the deck list in plain text ready to copy into any external site or tool.
+
+## Card Preview
+
+Hover over any card in the card selector or the deck list to see a full-size card image with complete oracle text in the **Big Card** preview panel. Clicking a card also updates the preview. The image is downloaded on first view and cached locally; configure your image source in **Preferences → Images**.
+
+## Cube Lists and Draft
+
+When participating in a **Cube Draft** tournament, the deck editor opens in draft-pick mode. The left panel shows the current booster pack; double-click a card to draft it. After the draft, the editor switches to construction mode where you build your 40-card deck from the cards you picked.
+
+You can also import a cube as a `.dck` file and use it as the card pool for a **Cube From Deck** draft tournament — see the [Tournaments](/playing/tournaments) page for details.
+
+## The Deck Generator
+
+The deck editor includes a built-in **Deck Generator** (accessible via the toolbar). Supply a color combination and a format, and it automatically builds a sample deck from available cards. This is useful for quickly spinning up a test opponent or generating a starting point you can refine manually.
+
+## Keyboard Shortcuts
+
+| Action | Shortcut |
+|---|---|
+| Add card to deck | Double-click |
+| Remove one copy | Right-click → Remove |
+| Search | Type in the search bar, press Enter |
+| Save deck | Ctrl+S |
+| Import | Ctrl+I (or toolbar button) |
+| Export | Ctrl+E (or toolbar button) |

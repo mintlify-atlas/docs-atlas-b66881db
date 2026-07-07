@@ -1,0 +1,336 @@
+---
+title: "XMage Developer Utility Scripts Reference"
+sidebarTitle: "Utility Scripts"
+description: "Reference for XMage's Perl and Python utility scripts in Utils/: card generation, set tracking, data import, and release tooling."
+---
+
+The `Utils/` directory contains a collection of Perl and Python scripts that automate the most common tasks in XMage card development: generating Java class skeletons for new cards, tracking implementation progress across sets, importing card data from Scryfall, and packaging release builds. Most scripts read from shared data files (`mtg-cards-data.txt`, `mtg-sets-data.txt`, `keywords.txt`) that must be present in `Utils/` before use. Run all scripts from within the `Utils/` directory.
+
+## Data Files and Configuration
+
+Before running any generation or tracking script, ensure these files exist in `Utils/`:
+
+| File | Purpose |
+|---|---|
+| `author.txt` | One-line file containing your name; used as the `@author` tag in every generated Java file. Create it manually before running any `gen-*.pl` script. |
+| `keywords.txt` | List of Magic keywords that have existing XMage implementations. The `gen-card.pl` family of scripts reads this file to automatically add matching keyword abilities to newly generated card classes. |
+| `mtg-cards-data.txt` | Pipe-delimited card data (name, set code, collector number, mana cost, type, etc.) used by all generation and tracking scripts. Regenerate this from Scryfall whenever new sets are released. |
+| `mtg-sets-data.txt` | Set metadata mapping three-letter set codes to their XMage class names. Required by every script that operates on a per-set basis. |
+
+<Note>
+  Keep `mtg-cards-data.txt` up to date by running `mtg-cards-data-scryfall.py` after each new Magic set is officially released on Scryfall. The script considers the file stale after 12 hours and will re-download automatically, but you can force a refresh at any time by deleting the cached copy before running.
+</Note>
+
+---
+
+## Card Generation Scripts
+
+### `gen-card.pl`
+
+Generates a Java class skeleton for a single new card implementation. When run, it prompts you to enter a card name, looks it up in `mtg-cards-data.txt`, and writes a `.java` source file using the `cardClass.tmpl` (or `cardExtendedClass.tmpl` / `cardSplitClass.tmpl`) template. Keywords listed in `keywords.txt` are wired in automatically.
+
+```bash
+cd Utils
+perl gen-card.pl
+# Enter card name: Lightning Bolt
+```
+
+The script reads `author.txt` to populate the `@author` Javadoc tag. If the file is missing, it defaults to `anonymous`.
+
+---
+
+### `gen-card-test.pl`
+
+Generates a JUnit test class skeleton for a card. You can supply card names as command-line arguments or enter them interactively. The first argument is the primary card under test; additional arguments are helper cards whose data is imported as variables into the test class.
+
+```bash
+# With arguments
+perl gen-card-test.pl "Storm Crow" "Lightning Bolt"
+
+# Interactive mode
+perl gen-card-test.pl
+```
+
+---
+
+### `gen-existing-cards-by-set.pl`
+
+Generates Java class stubs for cards in a chosen set that **already have** an implementation somewhere else in the XMage codebase. Use this when adding a reprint set — the script discovers existing implementations and wires them to the new set without duplicating card logic.
+
+```bash
+perl gen-existing-cards-by-set.pl
+# Enter a set name: <set code>
+```
+
+---
+
+### `gen-existing-cards-by-set-author.pl`
+
+Variant of `gen-existing-cards-by-set.pl` that additionally tags generated stubs with your author name from `author.txt`.
+
+```bash
+perl gen-existing-cards-by-set-author.pl
+```
+
+---
+
+### `gen-simple-cards-by-set.pl`
+
+Generates **complete** Java class files for cards in a set that can be fully auto-generated from the template — cards with no unique rules text beyond what the template can express (basic lands, vanilla creatures, simple keyword creatures). Cards that require custom logic are skipped.
+
+```bash
+perl gen-simple-cards-by-set.pl
+# Enter a set name: <set code>
+```
+
+---
+
+## Set Listing and Progress Tracking Scripts
+
+### `gen-list-cards-for-set.pl`
+
+Generates the complete card list file for a set, drawing from `mtg-cards-data.txt` and `mtg-sets-data.txt`.
+
+```bash
+perl gen-list-cards-for-set.pl
+```
+
+---
+
+### `gen-list-unimplemented-cards-for-set.pl`
+
+Generates a list of cards in a set that do **not** yet have an XMage implementation. Useful for contribution planning — share the output as a GitHub issue or wiki page to coordinate work across contributors.
+
+```bash
+perl gen-list-unimplemented-cards-for-set.pl
+```
+
+---
+
+### `gen-list-implemented-cards-for-set.pl`
+
+Lists the cards in a set that already have an implementation. The inverse of `gen-list-unimplemented-cards-for-set.pl`.
+
+```bash
+perl gen-list-implemented-cards-for-set.pl
+```
+
+---
+
+### `update-list-implemented-cards.pl`
+
+Tracks implementation progress over time by generating two output files:
+
+- **`oldList.txt`** — snapshot of all currently implemented cards at the time the script runs.
+- **`newList.txt`** — cards added since the **previous** run of the script (i.e., the diff between the current run and the last saved snapshot).
+
+Run this script periodically to generate release notes or measure contributor progress between milestones.
+
+```bash
+perl update-list-implemented-cards.pl
+```
+
+---
+
+### `extract_in_wiki_format.pl`
+
+Extracts card data from `mtg-cards-data.txt` and formats it as wiki markup. Useful for publishing set completion tables to the XMage GitHub wiki.
+
+```bash
+perl extract_in_wiki_format.pl
+```
+
+---
+
+### `print-card-info.pl`
+
+Prints detailed information about a specific card sourced from the local data files. Handy for quickly verifying card metadata (mana cost, type line, collector number) without opening a browser.
+
+```bash
+perl print-card-info.pl
+```
+
+---
+
+### `find_new_cards.pl`
+
+Scans the codebase to find cards that have been added recently. Useful after a large batch of contributions to verify new implementations are present.
+
+```bash
+perl find_new_cards.pl
+```
+
+---
+
+### `gen_all_files_in_dck.pl`
+
+Generates Java class stubs for every card referenced inside a `.dck` deck file. Useful when you want to bootstrap implementations for all cards in a specific deck at once.
+
+```bash
+perl gen_all_files_in_dck.pl
+```
+
+---
+
+### `gen_list_duplicate_collector_ids.pl`
+
+Scans the card data for duplicate collector number entries within a single set, which can cause lookup bugs. Run this as a sanity check after updating `mtg-cards-data.txt`.
+
+```bash
+perl gen_list_duplicate_collector_ids.pl
+```
+
+---
+
+## Data Import Scripts
+
+### `mtg-cards-data-scryfall.py`
+
+Downloads card data from the Scryfall bulk-data API and writes it to `mtg-cards-data.txt` in the pipe-delimited format that all `gen-*.pl` scripts expect. The script handles Scryfall's paginated API automatically and respects the `User-Agent` header requirement (`mage-scryfall-sync/1.0`). It also checks whether the existing file is stale (older than 12 hours) before re-downloading.
+
+```python
+python3 mtg-cards-data-scryfall.py
+```
+
+Requires Python 3 and no third-party packages — only the standard library (`json`, `urllib`, `os`, `re`, `time`, `unicodedata`).
+
+---
+
+### `de-dup-cards-data.py`
+
+Deduplicates entries in `mtg-cards-data.txt`, removing exact-duplicate lines that can accumulate after repeated Scryfall imports or manual edits. Run this after `mtg-cards-data-scryfall.py` if you suspect duplicates.
+
+```python
+python3 de-dup-cards-data.py
+```
+
+---
+
+### `CubeCobraDownloader.py`
+
+Downloads cube data from [CubeCobra](https://cubecobra.com/) for use in XMage cube draft configuration. Supply a CubeCobra cube ID as input.
+
+```python
+python3 CubeCobraDownloader.py
+```
+
+---
+
+## Release and Build Scripts
+
+### `version-bump.pl`
+
+Bumps the XMage version number across **all** Maven `pom.xml` files in the repository. The script reads the current `mage-version` property from the root `pom.xml`, prompts for the new version string, then recursively finds every `pom.xml` under the repo root and replaces the old version token in place.
+
+```perl
+cd Utils
+perl version-bump.pl
+# Current version: 1.4.50
+# Enter new version: 1.4.51
+```
+
+---
+
+### `build-and-package.pl`
+
+Runs the full XMage build (`mvn clean install -DskipTests`) and then packages client and server ZIP artifacts into a single `mage-bundle.zip` distribution archive. Internally calls `mvn package assembly:single` for both `Mage.Client` and `Mage.Server`.
+
+```perl
+perl build-and-package.pl
+```
+
+---
+
+### `build-and-package-console.pl`
+
+Console-oriented variant of `build-and-package.pl`. Uses the same Maven build sequence but targets the console server assembly.
+
+```perl
+perl build-and-package-console.pl
+```
+
+---
+
+### `cut.pl`
+
+General-purpose release cut utility. Accepts a file (or `STDIN`), a search term (regex), a helper value, and an operation (`grep`, `filegrep`, `count`, `size`, `strip_http`, `matrix_flip`, `oneupcount`, `wget`, `grep_between`, `make_code_bat`). Used in release automation pipelines to extract and transform data from large source files.
+
+```perl
+# Usage
+perl cut.pl <file> <term> <helper> <operation>
+
+# Examples
+perl cut.pl bob.txt dave 5 grep
+perl cut.pl all_java2.java TOKEN_STARTS_HERE TOKEN_ENDS_HERE grep_between
+perl cut.pl full_text.txt keys 0 filegrep
+```
+
+---
+
+## Templates
+
+The following `.tmpl` files live alongside the scripts and are consumed by the `gen-*.pl` scripts via `Text::Template`. Do not delete or rename them.
+
+| Template | Used by |
+|---|---|
+| `cardClass.tmpl` | `gen-card.pl` — standard card class |
+| `cardExtendedClass.tmpl` | `gen-card.pl` — extended card class (for more complex cards) |
+| `cardExtendedLandClass.tmpl` | `gen-card.pl` — extended land class |
+| `cardSplitClass.tmpl` | `gen-card.pl` — split card class |
+| `cardInfo.tmpl` | Card info generation helpers |
+| `cardTest.tmpl` | `gen-card-test.pl` — JUnit test class skeleton |
+| `issue_tracker.tmpl` | Issue tracking output formatting |
+
+---
+
+## Typical Workflow: Adding a New Card
+
+<Steps>
+  <Step title="Set up your author identity">
+    Create `Utils/author.txt` with your name on a single line. This populates the `@author` tag in every generated file.
+
+    ```bash
+    echo "Your Name" > Utils/author.txt
+    ```
+  </Step>
+
+  <Step title="Refresh card data from Scryfall">
+    Make sure `mtg-cards-data.txt` contains data for the card you want to implement.
+
+    ```bash
+    cd Utils
+    python3 mtg-cards-data-scryfall.py
+    ```
+  </Step>
+
+  <Step title="Generate the Java class skeleton">
+    Run `gen-card.pl` and enter the exact card name when prompted.
+
+    ```bash
+    perl gen-card.pl
+    # Enter card name: Opt
+    ```
+
+    The script writes a `.java` file to the correct package directory inside `Mage.Sets/`.
+  </Step>
+
+  <Step title="Implement the card logic">
+    Open the generated `.java` file in your IDE. Keywords that exist in `keywords.txt` are already added. Fill in abilities, effects, and targeting for anything not auto-generated.
+  </Step>
+
+  <Step title="Generate a test class (optional but recommended)">
+    Use `gen-card-test.pl` to scaffold a JUnit test for your card.
+
+    ```bash
+    perl gen-card-test.pl "Opt"
+    ```
+  </Step>
+
+  <Step title="Verify set progress">
+    After implementing a batch of cards, run `update-list-implemented-cards.pl` to update `oldList.txt` and `newList.txt` and confirm your cards appear in the diff.
+
+    ```bash
+    perl update-list-implemented-cards.pl
+    ```
+  </Step>
+</Steps>

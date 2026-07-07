@@ -1,0 +1,193 @@
+---
+title: "XMage Test Mode and Development Testing Tools"
+sidebarTitle: "Testing Tools"
+description: "Use XMage's test mode server, cheat commands, and fast-game buttons to quickly verify card interactions and game rule implementations."
+---
+
+XMage ships with a dedicated test mode for the server that strips away the safety guardrails used on public servers — no deck validation, no connection timeouts, simplified login — so you can spin up a game quickly, inject cards mid-match, and pause execution in your IDE debugger without being kicked. Alongside test mode there is a Swing admin console (`Mage.Server.Console`), a JUnit test framework (`Mage.Tests`), and a details logging mode, all designed to keep the feedback loop tight during development.
+
+<Warning>
+  Test mode disables deck validation, authentication, and connection security checks. **Never run a server with `-DtestMode=true` (or `-testMode=true`) on a network-accessible or public-facing host.** Use it only on a local development machine.
+</Warning>
+
+---
+
+## Test Mode (`testMode`)
+
+Test mode is a special server startup flag that activates a collection of developer-friendly relaxations to normal game rules and server behaviour. It is controlled by the `testMode` flag, which can be supplied as either a Java system property or a program argument (see [Enabling Test Mode](#enabling-test-mode) below).
+
+When test mode is active, the following behaviours change:
+
+| Behaviour | Normal server | Test mode |
+|---|---|---|
+| Deck validation | Enforced (format legality) | **Disabled** — any deck is accepted |
+| Registration / login | Password required | **Simplified** — no password check |
+| Connection keep-alive pings | Active (disconnects idle clients) | **Disabled** — prevents disconnects when paused in an IDE debugger |
+| Draft click-protection timeout | Active | **Disabled** |
+| Sideboard deck loading | Restricted to sideboard-legal cards | **Any deck** can be loaded |
+| Fast-game buttons | Not present | **Available** in the game UI to quickly advance game state |
+| Cheat commands | Not available | **Available** — add any card to hand, set life totals, etc. mid-game |
+| Debug main menu | Not shown | **Shown** in the client (requires `-debug` arg on the client app) |
+
+<Tip>
+  For full GUI and rendering debugging, launch the client with the `-debug` argument **in addition to** running the server in test mode. The debug main menu for GUI and rendering tests is only shown in the client when both conditions are met — test mode on the server **and** `-debug` on the client.
+</Tip>
+
+### How Test Mode Is Activated
+
+Internally, `mage.server.Main` reads the `testMode` state from three sources in increasing priority order:
+
+1. **Default** — test mode is automatically enabled when the server detects it is running a developer build (i.e., `version.isDeveloperBuild()` returns `true`).
+2. **Java system property** (`-Dxmage.testMode=true`) — set in the JVM launch options.
+3. **Program argument** (`-testMode=true`) — passed directly on the command line.
+
+```java
+// From mage.server.Main — priority: default -> prop -> arg
+testMode |= version.isDeveloperBuild();
+
+if (System.getProperty("xmage.testMode") != null) {
+    testMode = Boolean.parseBoolean(System.getProperty("xmage.testMode"));
+}
+
+// then, overridden by program argument if supplied:
+// -testMode=true
+```
+
+---
+
+## Details Mode (`detailsMode`)
+
+Details mode enables additional server-side logging, making it easier to trace game events and network traffic without attaching a full debugger. It is disabled by default and has no effect on gameplay rules.
+
+```bash
+# As a system property
+java -Dxmage.detailsMode=true -jar mage-server.jar
+
+# As a program argument
+java -jar mage-server.jar -detailsMode=true
+```
+
+Both `detailsMode` and `testMode` can be combined:
+
+```bash
+java -Dxmage.testMode=true -Dxmage.detailsMode=true -jar mage-server.jar
+```
+
+---
+
+## Admin Password (`adminPassword`)
+
+The admin password controls access to privileged server console operations. It can be set via either a system property or a program argument. The value is sanitised by `SystemUtil.sanitize()` before use.
+
+```bash
+# System property (recommended — keeps the password out of the process argument list)
+java -Dxmage.adminPassword=s3cr3t -jar mage-server.jar
+
+# Program argument
+java -jar mage-server.jar -adminPassword=s3cr3t
+```
+
+> The property name `xmage.adminPassword` and argument prefix `-adminPassword=` are defined as constants in `mage.server.Main`.
+
+---
+
+## Enabling Test Mode
+
+### From IntelliJ IDEA
+
+<Steps>
+  <Step title="Open Run Configurations">
+    In IntelliJ IDEA, open the **Run** menu and choose **Edit Configurations…**.
+  </Step>
+
+  <Step title="Select the server run configuration">
+    Find the run configuration for `mage.server.Main` (typically named **Mage Server** or similar). Click it to open its settings.
+  </Step>
+
+  <Step title="Add the VM option">
+    In the **VM options** field (under **Modify options → Add VM options** if the field is not visible), add:
+
+    ```
+    -Dxmage.testMode=true
+    ```
+
+    To also enable details logging, append:
+
+    ```
+    -Dxmage.testMode=true -Dxmage.detailsMode=true
+    ```
+  </Step>
+
+  <Step title="Apply and run">
+    Click **Apply**, then **OK**. Start the server normally — test mode is now active. Watch the startup log for confirmation that test mode was picked up.
+  </Step>
+
+  <Step title="Configure the client for debug mode (optional)">
+    Open the run configuration for `mage.client.MageFrame` and add `-debug` to the **Program arguments** field (not VM options). This enables the debug main menu in the client GUI for rendering and layout testing.
+  </Step>
+</Steps>
+
+### From the Command Line
+
+```bash
+# Minimal test mode
+java -Dxmage.testMode=true -jar mage-server.jar
+
+# Test mode + details logging + custom admin password
+java -Dxmage.testMode=true -Dxmage.detailsMode=true -Dxmage.adminPassword=dev -jar mage-server.jar
+
+# Using program arguments instead of system properties
+java -jar mage-server.jar -testMode=true -detailsMode=true -adminPassword=dev
+```
+
+---
+
+## Server Console App (`Mage.Server.Console`)
+
+`Mage.Server.Console` is a Swing GUI admin panel that connects to a running XMage server (test mode or otherwise). It provides an operator view of the live server state without requiring a full game client.
+
+**Capabilities:**
+
+- View all currently connected users and active game/tournament tables
+- Send broadcast messages to all connected users
+- Kick individual users from the server
+- Remove stale or stuck tables
+
+The console connects over the same remoting port as the game client. Start it separately after the server is running and supply the server host, port, and admin password when prompted.
+
+---
+
+## JUnit Test Framework (`Mage.Tests`)
+
+The `Mage.Tests` module lets you write programmatic game-state tests without running the full client/server stack. Tests set up a complete game in memory, execute actions (play cards, declare attackers, activate abilities), and assert on resulting game state (life totals, battlefield contents, graveyard, etc.).
+
+This is the fastest way to verify that a newly implemented card behaves correctly under all edge cases:
+
+- No server startup required
+- No GUI or network overhead
+- Deterministic — you control exactly which cards are in hand, library order, and opponent state
+- Tests run as part of the standard Maven build
+
+```bash
+# Run all card tests
+mvn test -pl Mage.Tests
+
+# Run tests for a specific card class
+mvn test -pl Mage.Tests -Dtest=LightningBoltTest
+```
+
+See the card-testing documentation for a full guide to writing `Mage.Tests` unit tests.
+
+---
+
+## Quick Reference: Server Startup Flags
+
+| Flag | Type | Default | Effect |
+|---|---|---|---|
+| `-Dxmage.testMode=true` | System property | `false` (auto-`true` for dev builds) | Enables test mode |
+| `-testMode=true` | Program argument | — | Enables test mode (overrides property) |
+| `-Dxmage.detailsMode=true` | System property | `false` | Enables verbose server logging |
+| `-detailsMode=true` | Program argument | — | Enables verbose server logging |
+| `-Dxmage.adminPassword=xxx` | System property | `""` | Sets admin console password |
+| `-adminPassword=xxx` | Program argument | — | Sets admin console password |
+| `-Dxmage.config.path=path` | System property | `config/config.xml` | Overrides config file location |

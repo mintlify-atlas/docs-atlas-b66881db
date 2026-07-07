@@ -1,0 +1,197 @@
+---
+title: "XMage AI Opponents: Architecture and Configuration"
+sidebarTitle: "AI Players"
+description: "Learn about XMage's AI player implementations — ComputerPlayer (basic), ComputerPlayer6 (look-ahead), and MCTS — and how to configure them on a server."
+---
+
+XMage ships with three distinct AI player types, ranging from a lightweight draft assistant to a full look-ahead minimax engine. Each is delivered as a plugin JAR registered under `<playerTypes>` in `config.xml`. Understanding how they differ — in algorithm, resource consumption, and capability — helps you configure a server that balances playability against CPU load.
+
+## AI Types at a Glance
+
+| AI Name | Config Entry | Main Class | Algorithm | Game Support |
+|---|---|---|---|---|
+| `Computer - mad` | `mage-player-ai-ma.jar` | `ComputerPlayerControllableProxy` | Minimax look-ahead (`ComputerPlayer7` → `ComputerPlayer6`) | Full games |
+| `Computer - monte carlo` | `mage-player-aimcts.jar` | `ComputerPlayerMCTS` | Monte Carlo Tree Search | Full games |
+| `Computer - draftbot` | `mage-player-ai-draft-bot.jar` | `ComputerDraftPlayer` | Heuristic card evaluation | Draft only |
+
+<Note>
+  Magic: The Gathering has an enormous combinatorial game tree. Even the strongest XMage AI will make suboptimal plays on complex board states — the number of possible actions grows too fast for exhaustive search within practical time limits. The AI implementations are best understood as functional opponents for testing card interactions and learning the rules, not as tournament-level competition.
+</Note>
+
+## Class Hierarchy
+
+All AI player classes ultimately extend `ComputerPlayer`, which itself extends `PlayerImpl` (the shared implementation of the `Player` interface used by both human and AI players):
+
+```
+PlayerImpl
+└── ComputerPlayer               (Mage.Player.AI — base heuristics, draft logic)
+    ├── ComputerPlayer6          (Mage.Player.AI.MA — look-ahead search engine)
+    │   └── ComputerPlayer7      (Mage.Player.AI.MA — latest mad bot iteration)
+    │       └── ComputerPlayerControllableProxy  (registered as "Computer - mad")
+    └── ComputerPlayerMCTS       (Mage.Player.AIMCTS — Monte Carlo Tree Search)
+    └── ComputerDraftPlayer      (Mage.Player.AI.DraftBot — draft picks only)
+```
+
+## `<playerTypes>` Registration
+
+```xml
+<playerTypes>
+    <playerType name="Human"
+                jar="mage-player-human.jar"
+                className="mage.player.human.HumanPlayer"/>
+    <playerType name="Computer - mad"
+                jar="mage-player-ai-ma.jar"
+                className="mage.player.ai.ComputerPlayerControllableProxy"/>
+    <playerType name="Computer - monte carlo"
+                jar="mage-player-aimcts.jar"
+                className="mage.player.ai.ComputerPlayerMCTS"/>
+    <playerType name="Computer - draftbot"
+                jar="mage-player-ai-draft-bot.jar"
+                className="mage.player.ai.ComputerDraftPlayer"/>
+</playerTypes>
+```
+
+## AI Implementation Details
+
+### `ComputerPlayer` — Base Class
+
+`ComputerPlayer` (in `Mage.Player.AI`) is the foundation all AI types inherit from. Its Javadoc describes it as:
+
+> *"Basic server side bot with simple actions support (game, draft, construction/sideboarding). Full and minimum implementation of all choose dialogs to allow AI to start and finish a real game. Used as parent class for any AI implementations."*
+
+Key implementation details from the source:
+
+- Extends `PlayerImpl` — shares all game-state tracking with human players.
+- Applies a `PASSIVITY_PENALTY` of `5` to discourage passing priority when legal actions exist.
+- Maintains a `pickedCards` list and `chosenColors` list to improve draft consistency across picks.
+- Manages `lastUnpaidMana` to correctly navigate multi-step mana payment dialogs.
+- Uses a shared simulation thread pool sized at `COMPUTER_MAX_THREADS_FOR_SIMULATIONS = 5` threads by default (configurable at build time). Comments in the source recommend 1 thread for debugging and matching the CPU core count for maximum performance.
+
+```java
+// From ComputerPlayer.java
+protected static final int PASSIVITY_PENALTY = 5;
+final static int COMPUTER_MAX_THREADS_FOR_SIMULATIONS = 5;
+```
+
+### `ComputerPlayer6` — Look-Ahead Search Engine
+
+`ComputerPlayer6` (in `Mage.Player.AI.MA`) extends the base player with a game-tree search inspired by minimax with alpha-beta pruning. Its Javadoc calls it the *"mad bot, part of implementation"*.
+
+Key implementation details:
+
+- Uses `SimulationNode2` to build a tree of possible game states.
+- Evaluates leaf nodes with `GameStateEvaluator2`.
+- Applies `TreeOptimizer` implementations from `mage.player.ai.ma.optimizers.impl` to prune obviously bad branches early.
+- Caps the search at `MAX_SIMULATED_NODES_PER_CALC = 5000` nodes per calculation step to keep response times bounded.
+- Exposes `maxDepth`, `maxNodes`, and `maxThinkTimeSecs` fields that are set by the skill level passed at construction time.
+- Maintains its own `threadPoolSimulations` (a fixed `ThreadPoolExecutor`) separate from the base class pool, labeled with the thread prefix `AI_SIMULATION_MAD`.
+
+```java
+// From ComputerPlayer6.java
+private static final int MAX_SIMULATED_NODES_PER_CALC = 5000;
+
+protected int maxDepth;
+protected int maxNodes;
+protected int maxThinkTimeSecs;
+protected SimulationNode2 root;
+```
+
+`ComputerPlayer7` extends `ComputerPlayer6` with the `priorityPlay` dispatch loop, routing each turn step (upkeep, draw, main, combat, etc.) to the appropriate search strategy. `ComputerPlayerControllableProxy` wraps `ComputerPlayer7` and adds the ability for a human player to temporarily take control of the AI's choices — useful for testing.
+
+### `ComputerPlayerMCTS` — Monte Carlo Tree Search
+
+`ComputerPlayerMCTS` (in `Mage.Player.AIMCTS`) uses Monte Carlo Tree Search (MCTS) instead of deterministic minimax. Rather than evaluating a fixed-depth tree, MCTS runs many random simulations from the current state and selects actions that lead to the most wins across those simulations.
+
+Key implementation details from the source:
+
+- Think time scales with the skill level passed at construction: `maxThinkTime = skill * THINK_TIME_MULTIPLIER` (where `THINK_TIME_MULTIPLIER = 2.0`).
+- Uses all available CPU cores (`Runtime.getRuntime().availableProcessors()`) for parallel simulations when `USE_MULTIPLE_THREADS = true`.
+- Maintains an `MCTSNode` tree that is reused across consecutive decisions in the same game.
+- Think time is bounded by `THINK_MIN_RATIO` (40) and `THINK_MAX_RATIO` (100) percentage thresholds relative to the configured period.
+
+```java
+// From ComputerPlayerMCTS.java
+private static final double THINK_TIME_MULTIPLIER = 2.0;
+private static final boolean USE_MULTIPLE_THREADS = true;
+
+public ComputerPlayerMCTS(String name, RangeOfInfluence range, int skill) {
+    super(name, range);
+    human = false;
+    maxThinkTime = (int) (skill * THINK_TIME_MULTIPLIER);
+    poolSize = Runtime.getRuntime().availableProcessors();
+}
+```
+
+### `ComputerDraftPlayer` — Draft Bot
+
+`ComputerDraftPlayer` (in `Mage.Player.AI.DraftBot`) is a specialised AI that only participates in booster draft. Its Javadoc states it is an *"AI: server side bot for drafts (draftbot, the latest version). Can play drafts only, concede/lose on any real game and tourney."*
+
+Key implementation details:
+
+- Extends `ComputerPlayer` directly — it inherits the `pickedCards` and `chosenColors` draft evaluation logic from the base class.
+- Overrides `autoLoseGame()` to return `true` — if a draft bot somehow ends up in a constructed game, it immediately concedes.
+- Overrides `priority()` to call `game.concede(playerId)` — the bot never plays spells.
+- Overrides `canJoinTable()` to only accept tables where the tournament type `isDraft()` returns `true`.
+
+```java
+// From ComputerDraftPlayer.java
+@Override
+public boolean autoLoseGame() {
+    return true;
+}
+
+@Override
+public boolean canJoinTable(Table table) {
+    if (table.isTournament()) {
+        TournamentType tournamentType = table.getTournament().getTournamentType();
+        if (tournamentType != null && tournamentType.isDraft()) {
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+## AI Type Comparison
+
+| Property | `Computer - mad` | `Computer - monte carlo` | `Computer - draftbot` |
+|---|---|---|---|
+| **Algorithm** | Minimax look-ahead with alpha-beta pruning | Monte Carlo Tree Search | Heuristic card pick evaluation |
+| **Base class** | `ComputerPlayer7` → `ComputerPlayer6` | `ComputerPlayer` | `ComputerPlayer` |
+| **Plays real games** | ✅ Yes | ✅ Yes | ❌ No (auto-concedes) |
+| **Plays drafts** | ✅ Yes (inherited) | ✅ Yes (inherited) | ✅ Yes (primary purpose) |
+| **Think time control** | `maxDepth` / `maxNodes` / `maxThinkTimeSecs` | `skill × 2.0` seconds | N/A |
+| **Thread usage** | Fixed pool of 5 simulation threads | One thread per CPU core | Minimal (no game sim) |
+| **Counts toward `maxAiOpponents`** | ✅ Yes | ✅ Yes | ❌ No (unlimited) |
+| **Skill levels (1–9)** | ✅ Yes — deeper search | ✅ Yes — more think time | ✅ (no effect in practice) |
+| **Controllable by human** | ✅ Yes (via proxy) | ❌ No | ❌ No |
+
+## Server Configuration
+
+### Limiting AI Opponents
+
+The `maxAiOpponents` attribute in `config.xml` caps the number of simultaneous `Computer - mad` and `Computer - monte carlo` opponents across all active games. Draft bots are exempt:
+
+```xml
+<server ...
+        maxAiOpponents="15"
+/>
+```
+
+Each AI game thread is CPU-intensive. On a server with limited CPU resources, reducing `maxAiOpponents` prevents AI games from starving human-vs-human games of processor time.
+
+### Skill Level
+
+When a player creates a table and adds an AI opponent via the client, they choose a skill level from 1 to 9. This value is passed to the AI constructor:
+
+- **`Computer - mad`**: Higher skill → larger `maxDepth` and `maxNodes` values in `ComputerPlayer6`, meaning deeper search trees and stronger (but slower) play.
+- **`Computer - monte carlo`**: Higher skill → longer `maxThinkTime` (computed as `skill * 2.0` seconds), giving MCTS more rollout time per decision.
+- **`Computer - draftbot`**: Skill level is accepted at construction but has no practical effect on pick quality.
+
+<Note>
+  Draft bots (`Computer - draftbot`) do not count toward `maxAiOpponents` and are always available regardless of how many full-game AI opponents are currently active. You can fill a draft pod entirely with draft bots on a server that has `maxAiOpponents="0"`.
+</Note>
+
+<Warning>
+  Running many simultaneous AI games — especially at skill level 9 — can saturate all CPU cores and cause increased latency for human players. Monitor your server load and tune `maxAiOpponents`, `maxGameThreads`, and `COMPUTER_MAX_THREADS_FOR_SIMULATIONS` (a compile-time constant in `ComputerPlayer.java`) accordingly.
+</Warning>

@@ -1,0 +1,152 @@
+---
+title: "Install and Configure the XMage Client"
+sidebarTitle: "Client Setup"
+description: "Download the XMage launcher, install Java, and configure the client on Windows, Linux, or macOS for playing Magic: The Gathering."
+---
+
+The XMage client lets you play Magic: The Gathering against human opponents on public or private servers, and against computer AI opponents locally. Installation revolves around the **XMage Launcher** — a small Java application that downloads and keeps the main XMage app files up to date automatically. You do not need to build anything from source; the launcher handles everything.
+
+<Warning>
+  The client and server **must run the same XMage version**. If you connect to a public server, the launcher will update your client to match. For private servers, always update both sides together before a session.
+</Warning>
+
+## Prerequisites
+
+- Java 8 or later installed. See [System Requirements](/installation/requirements) for details.
+- An internet connection for the initial launcher download and subsequent app-file updates.
+- ~200 MB of free disk space for the base install; several GB more if you download full card artwork.
+
+## Installation Steps
+
+<Steps>
+  <Step title="Download the Launcher">
+    Go to [http://xmage.today/](http://xmage.today/) and download the latest launcher archive (a `.zip` file containing `XMageLauncher-x.x.x.x.jar` and supporting files).
+  </Step>
+
+  <Step title="Unpack to a Local Folder">
+    Extract the archive to any permanent folder on your machine. Avoid paths that require administrator privileges to write to (e.g. `C:\Program Files` on Windows) — the launcher writes update files into its own directory.
+
+    ```
+    # Good examples
+    D:\games\xmage          (Windows)
+    ~/games/xmage           (Linux / macOS)
+    ```
+  </Step>
+
+  <Step title="Run the Launcher">
+    The launcher checks for updated XMage app files on every start and downloads them automatically. On first launch this may take a few minutes depending on your connection speed.
+
+    <Tabs>
+      <Tab title="Windows">
+        Double-click `XMageLauncher-x.x.x.x.jar` in Explorer, **or** run the provided `.bat` wrapper:
+
+        ```bat
+        XMageLauncher.bat
+        ```
+
+        If nothing happens when double-clicking the JAR, your `.jar` file association may point to the wrong program. Open a Command Prompt in the XMage folder and run:
+
+        ```bat
+        java -jar XMageLauncher-x.x.x.x.jar
+        ```
+
+        **GPU rendering artifacts (Windows):** If you see garbled card images or UI elements, add the following flag to fix Direct3D rendering issues:
+
+        ```
+        -Dsun.java2d.d3d=false
+        ```
+
+        Add this in the launcher under **Settings → Java → Client java options**.
+      </Tab>
+
+      <Tab title="Linux">
+        Open a terminal in the XMage directory and run:
+
+        ```bash
+        java -jar XMageLauncher-x.x.x.x.jar
+        ```
+
+        If any bundled shell scripts (`.sh`) are not executable, fix them first:
+
+        ```bash
+        chmod +x *.sh
+        ```
+
+        **Performance tip (Linux):** Enable OpenGL acceleration for smoother rendering:
+
+        ```
+        -Dsun.java2d.opengl=true
+        ```
+
+        Or enable XRender (more stable, fewer file-chooser issues):
+
+        ```
+        -Dsun.java2d.xrender=true
+        ```
+
+        Add either flag under **Settings → Java → Client java options** in the launcher.
+      </Tab>
+
+      <Tab title="macOS">
+        Open Terminal, navigate to the XMage folder, and run:
+
+        ```bash
+        java -jar XMageLauncher-x.x.x.x.jar
+        ```
+
+        **Gatekeeper:** macOS may refuse to open the JAR. If you see a security dialog, go to **System Settings → Privacy & Security → Open Anyway**.
+
+        **Apple Silicon (M1/M2):** You must have a native ARM64 JDK installed. With an x86-64 JDK the client may freeze when opening dialogs. Verify your JDK architecture:
+
+        ```bash
+        java -XshowSettings:property -version 2>&1 | grep "os.arch"
+        # Expected: os.arch = aarch64
+        ```
+
+        If the output shows `x86_64`, install an AArch64 JDK (e.g. Eclipse Temurin or Azul Zulu for AArch64) and relaunch.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Configure JVM Options (Optional)">
+    From the launcher menu bar choose **Settings → Java**. Here you can set:
+
+    - **Client java options** — JVM flags applied when the XMage client starts (e.g. heap size, rendering flags).
+    - **Server java options** — JVM flags applied when launching a local server from the launcher.
+
+    Example flags for a machine with 4 GB of RAM to spare:
+
+    ```
+    -Xmx2G -Xms512m
+    ```
+  </Step>
+
+  <Step title="Connect to a Server">
+    Click **Start Client** in the launcher. In the connection dialog, enter a server address and port (`17171` by default). Public servers are listed at [http://xmage.today/servers/](http://xmage.today/servers/).
+
+    To host your own server instead, see [Server Setup](/installation/server-setup).
+  </Step>
+
+  <Step title="Download Card Images">
+    On first connection the client will prompt you to download card images. You can also trigger this later from the client menu. Images are cached in the `xmage/mage-client/cache/` directory. A complete download of all sets can reach several gigabytes — you can choose to download only the sets you need.
+  </Step>
+</Steps>
+
+## Client Configuration Files
+
+The XMage client stores its preferences in the `config/` folder inside your XMage installation directory. Most settings are managed through the launcher and client UI, but you can inspect or edit these files directly if needed. Do not edit them while the client or launcher is running.
+
+## JVM Performance Tweaks
+
+XMage targets the JRE 8 rendering pipeline. The flags below (set under **Settings → Java → Client java options**) can noticeably improve performance on capable hardware:
+
+| Flag | Effect |
+|------|--------|
+| `-Dsun.java2d.opengl=true` | Enable OpenGL pipeline (Linux; see caveat about file chooser bug) |
+| `-Dsun.java2d.xrender=true` | Enable XRender pipeline (Linux; more stable than OpenGL) |
+| `-Dsun.java2d.d3d=false` | Disable Direct3D (Windows; fixes card-rendering artifacts) |
+| `-Xmx2G` | Raise max heap to 2 GB (helps with large game states or many open card images) |
+
+<Tip>
+  The [Oracle JRE 8 2D rendering flags reference](https://docs.oracle.com/javase/8/docs/technotes/guides/2d/flags.html) lists every available pipeline option if you want to experiment further.
+</Tip>
